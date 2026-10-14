@@ -123,5 +123,9 @@ readable-text extractor, and widget smoke tests for every tab.
 - **Feed URLs** are best-effort. Reddit rate-limits aggressively, so those
   sources are fetched sequentially with a browser-like user agent; any source
   that fails is simply skipped on that refresh.
-- The AI features need a valid NVIDIA key with available credit (one is baked
-  into the build — see the note above).
+- The AI features need a valid NVIDIA key with available credit. Provide one via
+  `.env` (or `--dart-define`), or paste it in Settings on first run.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
