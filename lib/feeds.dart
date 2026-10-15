@@ -13,187 +13,186 @@ const kUserAgent =
     'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
 
-/// The active sources behind the daily brief — the well-known, high-volume
-/// feeds across a data/AI engineer's world *and* the rest of life: tech news,
-/// world news, science, sport, anime and Morocco / PFE opportunities.
+/// The active sources behind the daily brief. Chosen to be clear, useful and
+/// easy to read: plain-language titles, real knowledge — no jargon you'd need
+/// a PhD to enjoy. Built for a working AI / ML / software engineer who also
+/// likes sport, anime and following what's happening at home in Morocco.
 const kSources = <Source>[
   // ---------------------------------------------------------------- AI / ML
-  Source('Hugging Face', 'https://huggingface.co/blog/feed.xml', 'AI',
-      cap: 2, ageH: 168, weight: 2, about: 'Models, datasets and open ML news.'),
+  // Easy-to-read AI news first, then practical learning material.
+  Source('The Decoder', 'https://the-decoder.com/feed/', 'AI',
+      cap: 2, ageH: 96, weight: 2, about: 'Clear, no-hype AI news.'),
+  Source('The Verge AI',
+      'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml', 'AI',
+      cap: 2, ageH: 72, weight: 2, about: 'AI news explained for normal people.'),
+  Source('TechCrunch AI',
+      'https://techcrunch.com/category/artificial-intelligence/feed/', 'AI',
+      cap: 2, ageH: 72, about: 'New AI products, startups and funding.'),
+  Source('TLDR AI', 'https://tldr.tech/api/rss/ai', 'AI',
+      cap: 2, ageH: 72, about: 'The day in AI, in short summaries.'),
+  Source('Ars Technica AI', 'https://arstechnica.com/ai/feed/', 'AI',
+      cap: 1, ageH: 96, about: 'Practical AI news with real depth.'),
+  Source('MIT Tech Review AI',
+      'https://www.technologyreview.com/topic/artificial-intelligence/feed',
+      'AI', cap: 1, ageH: 168, about: 'Trusted, well-explained AI stories.'),
+  Source('AI News (Google)',
+      'https://news.google.com/rss/search?q=artificial+intelligence+when:2d&hl=en-US&gl=US&ceid=US:en',
+      'AI', cap: 2, ageH: 48, about: 'What the world is saying about AI today.'),
   Source('OpenAI', 'https://openai.com/news/rss.xml', 'AI',
-      cap: 1, ageH: 240, weight: 2),
+      cap: 1, ageH: 240, weight: 2, about: 'Official OpenAI announcements.'),
   Source('Google DeepMind', 'https://deepmind.google/blog/rss.xml', 'AI',
-      cap: 1, ageH: 240, weight: 2),
-  Source('Google Research', 'https://research.google/blog/rss/', 'AI',
-      cap: 1, ageH: 240, weight: 1),
+      cap: 1, ageH: 240, weight: 2, about: 'Official DeepMind announcements.'),
   Source('Google AI', 'https://blog.google/technology/ai/rss/', 'AI',
-      cap: 1, ageH: 168),
-  Source('NVIDIA', 'https://blogs.nvidia.com/feed/', 'AI', cap: 1, ageH: 168),
-  Source('Microsoft Research', 'https://www.microsoft.com/en-us/research/feed/',
-      'AI', cap: 1, ageH: 240),
-  Source('Berkeley BAIR', 'https://bair.berkeley.edu/blog/feed.xml', 'AI',
-      cap: 1, ageH: 336),
-  Source('The Gradient', 'https://thegradient.pub/rss/', 'AI',
-      cap: 1, ageH: 336),
-  Source("Lil'Log", 'https://lilianweng.github.io/index.xml', 'AI',
-      cap: 1, ageH: 720, about: 'Lilian Weng on deep learning.'),
-  Source('Sebastian Raschka', 'https://magazine.sebastianraschka.com/feed',
-      'AI', cap: 1, ageH: 336),
-  Source('Towards Data Science', 'https://towardsdatascience.com/feed', 'AI',
-      cap: 2, ageH: 72),
-  Source('KDnuggets', 'https://www.kdnuggets.com/feed', 'AI',
-      cap: 2, ageH: 96),
-  Source('MarkTechPost', 'https://www.marktechpost.com/feed/', 'AI',
-      cap: 2, ageH: 72),
+      cap: 1, ageH: 168, about: 'New AI features from Google.'),
+  Source('NVIDIA', 'https://blogs.nvidia.com/feed/', 'AI',
+      cap: 1, ageH: 168, about: 'AI, GPUs and robotics from NVIDIA.'),
+  Source('Hugging Face', 'https://huggingface.co/blog/feed.xml', 'AI',
+      cap: 1, ageH: 168, about: 'New open models and tools, explained.'),
   Source('Machine Learning Mastery', 'https://machinelearningmastery.com/feed/',
-      'AI', cap: 1, ageH: 240),
-  Source('PyTorch', 'https://pytorch.org/blog/feed.xml', 'AI',
-      cap: 1, ageH: 336),
-  Source('Qwen', 'https://qwenlm.github.io/blog/index.xml', 'AI',
-      cap: 1, ageH: 336),
-  Source('SemiAnalysis', 'https://semianalysis.com/feed/', 'AI',
-      cap: 1, ageH: 336, about: 'Deep analysis of AI hardware and chips.'),
-  Source('ByteByteGo', 'https://blog.bytebytego.com/feed', 'AI',
-      cap: 1, ageH: 240),
-  Source('Import AI', 'https://importai.substack.com/feed', 'AI',
-      cap: 1, ageH: 336, about: "Jack Clark's weekly AI roundup."),
-  Source('r/MachineLearning',
-      'https://www.reddit.com/r/MachineLearning/top/.rss?t=day', 'AI',
-      cap: 2, ageH: 48),
+      'AI', cap: 1, ageH: 240, about: 'Step-by-step ML tutorials.'),
+  Source('KDnuggets', 'https://www.kdnuggets.com/feed', 'AI',
+      cap: 1, ageH: 120, about: 'Data science tutorials and career tips.'),
+  Source('Analytics Vidhya', 'https://www.analyticsvidhya.com/feed/', 'AI',
+      cap: 1, ageH: 168, about: 'Beginner-friendly data science guides.'),
+  Source('Towards Data Science', 'https://towardsdatascience.com/feed', 'AI',
+      cap: 1, ageH: 96, about: 'Data science articles from practitioners.'),
+  Source('MarkTechPost', 'https://www.marktechpost.com/feed/', 'AI',
+      cap: 1, ageH: 96, about: 'AI research made readable.'),
   Source('r/LocalLLaMA', 'https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day',
-      'AI', cap: 2, ageH: 48, about: 'Open models and local inference.'),
-  Source('r/datascience', 'https://www.reddit.com/r/datascience/top/.rss?t=day',
-      'AI', cap: 2, ageH: 48),
-  Source('r/deeplearning',
-      'https://www.reddit.com/r/deeplearning/top/.rss?t=week', 'AI',
-      cap: 1, ageH: 96),
+      'AI', cap: 1, ageH: 48, about: 'Run AI models on your own PC.'),
+  Source('r/artificial', 'https://www.reddit.com/r/artificial/top/.rss?t=day',
+      'AI', cap: 1, ageH: 48, about: 'Popular AI discussions.'),
+  Source('r/datascience',
+      'https://www.reddit.com/r/datascience/top/.rss?t=week', 'AI',
+      cap: 1, ageH: 168, about: 'Data science jobs, tips and real talk.'),
+  Source('r/learnmachinelearning',
+      'https://www.reddit.com/r/learnmachinelearning/top/.rss?t=week', 'AI',
+      cap: 1, ageH: 168, about: 'Beginners sharing ML resources.'),
 
   // ------------------------------------------------------- Dev / engineering
+  // Practical, learn-something-today material.
   Source('Hacker News', 'https://hnrss.org/frontpage?points=150', 'Dev',
-      cap: 3, ageH: 48, about: 'Top technical links as they get traction.'),
+      cap: 3, ageH: 48, about: 'What tech people are reading right now.'),
   Source('Hacker News (best)', 'https://hnrss.org/best', 'Dev',
-      cap: 2, ageH: 72),
-  Source('Lobsters', 'https://lobste.rs/rss', 'Dev',
-      cap: 2, ageH: 48, about: 'Smaller, higher-signal dev community.'),
+      cap: 1, ageH: 72, about: 'The best tech links of the moment.'),
   Source('GitHub Trending',
       'https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml', 'Dev',
-      cap: 2, ageH: 48, about: 'Repos gaining stars today.'),
-  Source('GitHub Blog', 'https://github.blog/feed/', 'Dev', cap: 1, ageH: 168),
-  Source('Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index',
-      'Dev', cap: 2, ageH: 48),
-  Source('Simon Willison', 'https://simonwillison.net/atom/everything/', 'Dev',
-      cap: 2, ageH: 120, about: 'Practical AI and Python notes.'),
-  Source('InfoQ', 'https://feed.infoq.com/', 'Dev', cap: 1, ageH: 120),
-  Source('The New Stack', 'https://thenewstack.io/feed/', 'Dev',
-      cap: 1, ageH: 96),
-  Source('Google Developers', 'https://developers.googleblog.com/feed/', 'Dev',
-      cap: 1, ageH: 168),
+      cap: 2, ageH: 48, about: 'Cool projects gaining stars today.'),
+  Source('freeCodeCamp', 'https://www.freecodecamp.org/news/rss/', 'Dev',
+      cap: 2, ageH: 120, weight: 2, about: 'Free, clear coding tutorials.'),
   Source('Real Python', 'https://realpython.com/atom.xml', 'Dev',
-      cap: 2, ageH: 168),
-  Source('Go Blog', 'https://go.dev/blog/feed.atom', 'Dev', cap: 1, ageH: 336),
-  Source('Rust Blog', 'https://blog.rust-lang.org/feed.xml', 'Dev',
-      cap: 1, ageH: 336),
-  Source('Cloudflare Blog', 'https://blog.cloudflare.com/rss/', 'Dev',
-      cap: 1, ageH: 168),
-  Source('Netflix Tech Blog', 'https://netflixtechblog.com/feed', 'Dev',
-      cap: 1, ageH: 336),
-  Source('Martin Fowler', 'https://martinfowler.com/feed.atom', 'Dev',
-      cap: 1, ageH: 336),
-  Source('Julia Evans', 'https://jvns.ca/atom.xml', 'Dev', cap: 1, ageH: 336),
-  Source('Dan Luu', 'https://danluu.com/atom.xml', 'Dev', cap: 1, ageH: 336),
-  Source('Stack Overflow Blog', 'https://stackoverflow.blog/feed/', 'Dev',
-      cap: 1, ageH: 240),
-  Source('Smashing Magazine', 'https://www.smashingmagazine.com/feed/', 'Dev',
-      cap: 1, ageH: 168),
-  Source('The New Stack', 'https://thenewstack.io/feed/', 'Dev',
-      cap: 1, ageH: 168),
-  Source('InfoQ (feed)', 'https://feed.infoq.com/tags/ai-ml-data-eng/', 'Dev',
-      cap: 1, ageH: 240),
-  Source('r/programming', 'https://www.reddit.com/r/programming/top/.rss?t=day',
-      'Dev', cap: 2, ageH: 48),
-  Source('r/FlutterDev', 'https://www.reddit.com/r/flutterdev/top/.rss?t=week',
-      'Dev', cap: 1, ageH: 96),
+      cap: 1, ageH: 168, about: 'Python tutorials that are easy to follow.'),
+  Source('DEV Community', 'https://dev.to/feed', 'Dev',
+      cap: 2, ageH: 72, about: 'Developers sharing what they learned.'),
+  Source('ByteByteGo', 'https://blog.bytebytego.com/feed', 'Dev',
+      cap: 1, ageH: 240, about: 'How big systems work, with simple diagrams.'),
+  Source('Simon Willison', 'https://simonwillison.net/atom/everything/', 'Dev',
+      cap: 1, ageH: 120, about: 'Practical tips on using AI and Python.'),
+  Source('GitHub Blog', 'https://github.blog/feed/', 'Dev',
+      cap: 1, ageH: 168, about: 'New GitHub features and dev advice.'),
+  Source('Google Developers', 'https://developers.googleblog.com/feed/', 'Dev',
+      cap: 1, ageH: 168, about: 'New tools and APIs from Google.'),
+  Source('r/learnprogramming',
+      'https://www.reddit.com/r/learnprogramming/top/.rss?t=week', 'Dev',
+      cap: 1, ageH: 168, about: 'Advice for people learning to code.'),
+  Source('r/cscareerquestions',
+      'https://www.reddit.com/r/cscareerquestions/top/.rss?t=week', 'Dev',
+      cap: 1, ageH: 168, about: 'Tech jobs and internship advice.'),
 
-  // ------------------------------------------------------- Research / science
-  Source('arXiv', 'https://rss.arxiv.org/rss/cs.LG+cs.AI+cs.CL+cs.CV', 'Research',
-      cap: 5, ageH: 96, weight: 1, about: 'New machine-learning papers.'),
-  Source('Nature', 'https://www.nature.com/nature.rss', 'Research',
-      cap: 2, ageH: 96),
-  Source('Quanta', 'https://api.quantamagazine.org/feed/', 'Research',
-      cap: 2, ageH: 336, about: 'Beautiful math and science stories.'),
-  Source('Phys.org', 'https://phys.org/rss-feed/', 'Research',
-      cap: 2, ageH: 48),
+  // ----------------------------------------- Science, ideas & useful knowledge
+  // (category stays "Research" so it appears in your existing tab)
+  Source('Our World in Data', 'https://ourworldindata.org/atom.xml', 'Research',
+      cap: 1, ageH: 336, weight: 2,
+      about: 'The world in clear charts and facts.'),
+  Source('ScienceAlert', 'https://www.sciencealert.com/feed', 'Research',
+      cap: 2, ageH: 72, about: 'Science discoveries in plain language.'),
+  Source('Live Science', 'https://www.livescience.com/feeds/all', 'Research',
+      cap: 2, ageH: 72, about: 'Amazing science, explained simply.'),
+  Source('Science News', 'https://www.sciencenews.org/feed', 'Research',
+      cap: 1, ageH: 72, about: 'Trusted science reporting, plainly told.'),
   Source('ScienceDaily', 'https://www.sciencedaily.com/rss/all.xml', 'Research',
-      cap: 2, ageH: 48),
-  Source('New Scientist', 'https://www.newscientist.com/feed/home/', 'Research',
-      cap: 2, ageH: 48),
+      cap: 1, ageH: 72, about: 'New research summarised for everyone.'),
+  Source('Futurism', 'https://futurism.com/feed', 'Research',
+      cap: 1, ageH: 72, about: 'Future tech, space and AI curiosities.'),
+  Source('Smithsonian Magazine',
+      'https://www.smithsonianmag.com/rss/latest_articles/', 'Research',
+      cap: 1, ageH: 120, about: 'History, science and culture stories.'),
+  Source('Big Think', 'https://bigthink.com/feed/', 'Research',
+      cap: 1, ageH: 120, about: 'Big ideas explained by experts.'),
   Source('Space.com', 'https://www.space.com/feeds/all', 'Research',
-      cap: 1, ageH: 72),
-  Source('NASA', 'https://www.nasa.gov/rss/dyn/breaking_news.rss', 'Research',
-      cap: 1, ageH: 168),
+      cap: 1, ageH: 72, about: 'Space news and sky events.'),
+  Source('NASA', 'https://www.nasa.gov/feed/', 'Research',
+      cap: 1, ageH: 168, about: 'Official NASA news.'),
+  Source('The Marginalian', 'https://www.themarginalian.org/feed/', 'Research',
+      cap: 1, ageH: 336, about: 'Essays on living and thinking well.'),
+  Source('James Clear', 'https://jamesclear.com/feed', 'Research',
+      cap: 1, ageH: 336, about: 'Build better habits.'),
+  Source('Paul Graham', 'http://www.aaronsw.com/2002/feeds/pgessays.rss',
+      'Research', cap: 1, ageH: 2000,
+      about: 'Timeless essays on work and startups.'),
+  Source('Lifehacker', 'https://lifehacker.com/feed/rss', 'Research',
+      cap: 1, ageH: 96, about: 'Practical tips for everyday life.'),
+  Source('Quanta', 'https://api.quantamagazine.org/feed/', 'Research',
+      cap: 1, ageH: 336, about: 'Beautiful math and science stories.'),
+  Source('r/todayilearned',
+      'https://www.reddit.com/r/todayilearned/top/.rss?t=day', 'Research',
+      cap: 2, ageH: 48, weight: 2, about: 'Surprising facts people just learned.'),
+  Source('r/explainlikeimfive',
+      'https://www.reddit.com/r/explainlikeimfive/top/.rss?t=day', 'Research',
+      cap: 1, ageH: 48, about: 'Complicated things explained simply.'),
+  Source('r/science', 'https://www.reddit.com/r/science/top/.rss?t=day',
+      'Research', cap: 1, ageH: 48, about: 'New studies in plain words.'),
+  Source('r/Futurology', 'https://www.reddit.com/r/Futurology/top/.rss?t=day',
+      'Research', cap: 1, ageH: 48, about: 'Where technology is heading.'),
+  Source('r/LifeProTips',
+      'https://www.reddit.com/r/LifeProTips/top/.rss?t=week', 'Research',
+      cap: 1, ageH: 168, about: 'Small tricks that make life easier.'),
+  Source('r/Documentaries',
+      'https://www.reddit.com/r/Documentaries/top/.rss?t=week', 'Research',
+      cap: 1, ageH: 168, about: 'The best documentaries people share.'),
 
   // ------------------------------------------------------------------- News
   Source('BBC News', 'https://feeds.bbci.co.uk/news/rss.xml', 'News',
-      cap: 2, ageH: 36),
+      cap: 2, ageH: 36, about: 'Top stories from the BBC.'),
   Source('BBC World', 'https://feeds.bbci.co.uk/news/world/rss.xml', 'News',
-      cap: 2, ageH: 36),
-  Source('CNN', 'http://rss.cnn.com/rss/cnn_topstories.rss', 'News',
+      cap: 1, ageH: 36),
+  Source('Al Jazeera', 'https://www.aljazeera.com/xml/rss/all.xml', 'News',
       cap: 2, ageH: 36),
   Source('The Guardian', 'https://www.theguardian.com/world/rss', 'News',
       cap: 2, ageH: 36),
-  Source('NYT World', 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
-      'News', cap: 2, ageH: 36),
-  Source('NPR', 'https://feeds.npr.org/1001/rss.xml', 'News',
-      cap: 2, ageH: 48),
-  Source('Al Jazeera', 'https://www.aljazeera.com/xml/rss/all.xml', 'News',
-      cap: 1, ageH: 36),
-  Source('DW', 'https://rss.dw.com/rdf/rss-en-all', 'News',
-      cap: 1, ageH: 48),
-  Source('France 24', 'https://www.france24.com/en/rss', 'News',
-      cap: 1, ageH: 48),
-  Source('Euronews', 'https://www.euronews.com/rss?level=theme&name=news',
-      'News', cap: 1, ageH: 48),
-  Source('Politico', 'https://rss.politico.com/politics-news.xml', 'News',
-      cap: 1, ageH: 48),
-  Source('Time', 'https://time.com/feed/', 'News', cap: 1, ageH: 72),
-  Source('TechCrunch', 'https://techcrunch.com/feed/', 'News',
-      cap: 2, ageH: 48),
-  Source('The Verge', 'https://www.theverge.com/rss/index.xml', 'News',
-      cap: 1, ageH: 48),
-  Source('Wired', 'https://www.wired.com/feed/rss', 'News',
-      cap: 1, ageH: 72),
-  Source('MIT Tech Review', 'https://www.technologyreview.com/feed/', 'News',
-      cap: 1, ageH: 96),
-  Source('Ars Technica (tech)', 'https://feeds.arstechnica.com/arstechnica/tech',
-      'News', cap: 1, ageH: 48),
-  Source('Bloomberg', 'https://feeds.bloomberg.com/markets/news.rss', 'News',
-      cap: 1, ageH: 48, about: 'Markets and business.'),
-  Source('CNBC', 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-      'News', cap: 1, ageH: 48),
-  Source('MarketWatch', 'https://feeds.marketwatch.com/marketwatch/topstories/',
-      'News', cap: 1, ageH: 48),
   Source('Google News',
       'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', 'News',
       cap: 3, ageH: 24, about: 'Top stories, aggregated.'),
+  Source('TechCrunch', 'https://techcrunch.com/feed/', 'News',
+      cap: 2, ageH: 48, about: 'Startups and tech business.'),
+  Source('The Verge', 'https://www.theverge.com/rss/index.xml', 'News',
+      cap: 2, ageH: 48, about: 'Gadgets, apps and internet culture.'),
+  Source('Wired', 'https://www.wired.com/feed/rss', 'News',
+      cap: 1, ageH: 72, about: 'How technology changes life.'),
+  Source('MIT Tech Review', 'https://www.technologyreview.com/feed/', 'News',
+      cap: 1, ageH: 96),
+  Source('CNBC', 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
+      'News', cap: 1, ageH: 48, about: 'Business and money news.'),
 
   // ------------------------------------------------------------------ Video
+  // A big mix of the best channels: learn AI/coding, science, tech, ideas.
+  // Each channel shows its newest video, so the feed is always fresh.
+
+  // -- AI & data (learn it)
   Source('Andrej Karpathy',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJO5MZQN11PqgIvyuvQ',
       'Video', cap: 1, ageH: 720, weight: 3),
-  Source('Yannic Kilcher',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCZHmQk67mSJgfCCTn7xBfew',
-      'Video', cap: 1, ageH: 480),
+  Source('3Blue1Brown',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCYO_jab_esuFRV4b17AJtAw',
+      'Video', cap: 1, ageH: 720, weight: 2),
   Source('Two Minute Papers',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg',
       'Video', cap: 1, ageH: 480),
-  Source('Machine Learning Street Talk',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCMLtBahI5DMrt0NPvDSoIRQ',
-      'Video', cap: 1, ageH: 720),
-  Source('Lex Fridman',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCSHZKyawb77ixDdsGog4iWA',
-      'Video', cap: 1, ageH: 720),
   Source('AI Explained',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw',
+      'Video', cap: 1, ageH: 480),
+  Source('Matt Wolfe',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UChpleBmo18P08aKCIgti38g',
       'Video', cap: 1, ageH: 480),
   Source('Matthew Berman',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCawZsQWqfGSbCI5yjkdVkTA',
@@ -201,82 +200,150 @@ const kSources = <Source>[
   Source('Sam Witteveen',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UC55ODQSvARtgSyc8ThfiepQ',
       'Video', cap: 1, ageH: 480),
-  Source('Krish Naik',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCNU_lfiiWBdtULKOw6X0Dig',
-      'Video', cap: 1, ageH: 480),
-  Source('codebasics',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCh9nVJoWXmFb7sLApWGcLPQ',
-      'Video', cap: 1, ageH: 480),
   Source('StatQuest',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCtYLUTtgS3k1Fg4y5tAhLbw',
-      'Video', cap: 1, ageH: 480, about: 'Stats and ML, explained simply.'),
-  Source('sentdex',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCfzlCWGWYyIQ0aLC5w48gBQ',
       'Video', cap: 1, ageH: 480),
-  Source('Data School',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCnVzApLJE2ljPZSeQylSEyg',
-      'Video', cap: 1, ageH: 480),
-  Source('Rob Mulla',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCxladMszXan-jfgzyeIMyvw',
-      'Video', cap: 1, ageH: 480),
-  Source('Tina Huang',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UC2UXDak6o7rBm23k3Vv5dww',
-      'Video', cap: 1, ageH: 480),
-  Source('Weights & Biases',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCBp3w4DCEC64FZr4k9ROxig',
+  Source('Lex Fridman',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCSHZKyawb77ixDdsGog4iWA',
       'Video', cap: 1, ageH: 720),
   Source('DeepLearning.AI',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCcIXc5mJsHVYTZR1maL5l9w',
       'Video', cap: 1, ageH: 480),
-  Source('IBM Technology',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCKWaEZ-_VweaEx1j62do_vQ',
-      'Video', cap: 1, ageH: 480),
-  Source('NVIDIA Developer',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCBHcMCGaiJhv-ESTcWGJPcw',
-      'Video', cap: 1, ageH: 480),
-  Source('OpenAI (video)',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCXZCJLdBC09xxGZ6gcdrc6A',
-      'Video', cap: 1, ageH: 720),
-  Source('Google DeepMind (video)',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCP7jMXSY2xbc3KCAE0MHQ-A',
-      'Video', cap: 1, ageH: 720),
-  Source('3Blue1Brown',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCYO_jab_esuFRV4b17AJtAw',
-      'Video', cap: 1, ageH: 720),
-  Source('Veritasium',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCHnyfMqiRRG1u-2MsSQLbXA',
-      'Video', cap: 1, ageH: 720),
-  Source('Kurzgesagt',
-      'https://www.youtube.com/feeds/videos.xml?channel_id=UCsXVk37bltHxD1rDPwtNM8Q',
-      'Video', cap: 1, ageH: 720),
+
+  // -- Coding & dev (learn it)
   Source('Fireship',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA',
+      'Video', cap: 1, ageH: 480, weight: 2, about: 'Tech in 100 seconds.'),
+  Source('freeCodeCamp (video)',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC8butISFwT-Wl7EV0hUK0BQ',
+      'Video', cap: 1, ageH: 480, about: 'Full free coding courses.'),
+  Source('CS50',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCcabW7890RKJzL968QWEykA',
+      'Video', cap: 1, ageH: 1440, about: "Harvard's famous intro to CS."),
+  Source('Traversy Media',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC29ju8bIPH5as8OGnQzwJyA',
       'Video', cap: 1, ageH: 480),
+  Source('Programming with Mosh',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCWv7vMbMWH4-V0ZXdmDpPBA',
+      'Video', cap: 1, ageH: 720),
+  Source('Corey Schafer',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCCezIgC97PvUuR4_gbFUs5g',
+      'Video', cap: 1, ageH: 2000, about: 'The clearest Python tutorials.'),
+  Source('Tech With Tim',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC4JX40jDee_tINbkjycV4Sg',
+      'Video', cap: 1, ageH: 480),
+  Source('NetworkChuck',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC9x0AN7BWHpCDHSm9NiJFJQ',
+      'Video', cap: 1, ageH: 480, about: 'Networking, Linux and cyber, made fun.'),
+  Source('Flutter',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCwXdFgeE9KYzlDdR7TG9cMw',
+      'Video', cap: 1, ageH: 720),
+  Source('TechWorld with Nana',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCdngmbVKX1Tgre699-XLlUA',
+      'Video', cap: 1, ageH: 720, about: 'DevOps, Docker and cloud made easy.'),
+  Source('NVIDIA Developer',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCBHcMCGaiJhv-ESTcWGJPcw',
+      'Video', cap: 1, ageH: 720),
   Source('Computerphile',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UC9-y-6csu5WGm29I7JiwpnA',
       'Video', cap: 1, ageH: 720),
+
+  // -- Science & big ideas
+  Source('Veritasium',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCHnyfMqiRRG1u-2MsSQLbXA',
+      'Video', cap: 1, ageH: 720, weight: 2),
+  Source('Kurzgesagt',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCsXVk37bltHxD1rDPwtNM8Q',
+      'Video', cap: 1, ageH: 720, weight: 2),
+  Source('Vsauce',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC6nSFpj9HTCZ5t-N3Rm3-HA',
+      'Video', cap: 1, ageH: 1440),
+  Source('Mark Rober',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCY1kMZp36IQSyNx_9h4mpCg',
+      'Video', cap: 1, ageH: 1440),
+  Source('Smarter Every Day',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC6107grRI4m0o2-emgoDnAA',
+      'Video', cap: 1, ageH: 1440),
+  Source('Numberphile',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCoxcjq-8xIDTYp3uz647V5A',
+      'Video', cap: 1, ageH: 720),
+  Source('minutephysics',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCUHW94eEFW7hkUMVaZz4eDg',
+      'Video', cap: 1, ageH: 1440),
+  Source('SciShow',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCZYTClx2T1of7BRZ86-8fow',
+      'Video', cap: 1, ageH: 480),
+  Source('PBS Space Time',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC7_gcs09iThXybpVgjHZ_7g',
+      'Video', cap: 1, ageH: 720),
+  Source('TED',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCAuUUnT6oDeKwE6v1NGQxug',
+      'Video', cap: 1, ageH: 480, about: 'Inspiring talks from great speakers.'),
+  Source('TED-Ed',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCsooa4yRKGN_zEE8iknghZA',
+      'Video', cap: 1, ageH: 720),
+  Source('Crash Course',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCX6b17PVsYBQ0ip5gyeme-Q',
+      'Video', cap: 1, ageH: 720),
+  Source('Tom Scott',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCBa659QWEk1AI4Tg--mrJ2A',
+      'Video', cap: 1, ageH: 2000),
+
+  // -- How the world works (engineering, economy, geopolitics)
+  Source('Real Engineering',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCR1IuLEqb6UEA_zQ81kwXfg',
+      'Video', cap: 1, ageH: 1000),
+  Source('Practical Engineering',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCMOqf8ab-42UUQIdVoKwjlQ',
+      'Video', cap: 1, ageH: 720),
+  Source('Wendover Productions',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UC9RM-iSvTu1uPJb8X5yp3EQ',
+      'Video', cap: 1, ageH: 720),
+  Source('PolyMatter',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCgNg3vwj3xt7QOrcIDaHdFg',
+      'Video', cap: 1, ageH: 720),
+
+  // -- Tech reviews & gear
+  Source('Marques Brownlee',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ',
+      'Video', cap: 1, ageH: 480, weight: 2),
+  Source('Mrwhosetheboss',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCMiJRAwDNSNzuYeN2uWa0pA',
+      'Video', cap: 1, ageH: 480),
+  Source('Linus Tech Tips',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCXuqSBlHAE6Xw-yeJA0Tunw',
+      'Video', cap: 1, ageH: 480),
 
   // ------------------------------------------------------------------ Sport
   Source('BBC Sport', 'https://feeds.bbci.co.uk/sport/rss.xml', 'Sport',
       cap: 2, ageH: 48),
   Source('BBC Football', 'https://feeds.bbci.co.uk/sport/football/rss.xml',
-      'Sport', cap: 1, ageH: 48),
-  Source('The Guardian Sport', 'https://www.theguardian.com/sport/rss', 'Sport',
-      cap: 1, ageH: 48),
+      'Sport', cap: 2, ageH: 48),
   Source('The Guardian Football', 'https://www.theguardian.com/football/rss',
       'Sport', cap: 1, ageH: 48),
   Source('Sky Sports', 'https://www.skysports.com/rss/12040', 'Sport',
       cap: 1, ageH: 48),
+  Source('Marca (EN)', 'https://e00-marca.uecdn.es/rss/en/index.xml', 'Sport',
+      cap: 1, ageH: 48, about: 'Spanish football, in English.'),
   Source('Motorsport', 'https://www.motorsport.com/rss/all/news/', 'Sport',
       cap: 1, ageH: 72),
-  Source('Marca (EN)', 'https://e00-marca.uecdn.es/rss/en/index.xml', 'Sport',
-      cap: 1, ageH: 48),
+  Source('Atlas Lions & Botola',
+      'https://news.google.com/rss/search?q=Morocco+national+football+team+OR+Botola+Pro&hl=en-US&gl=US&ceid=US:en',
+      'Sport', cap: 2, ageH: 96, weight: 2, about: 'Moroccan football news.'),
+  Source('Football Maroc (FR)',
+      'https://news.google.com/rss/search?q=Lions+de+l%27Atlas+OR+Botola+OR+Wydad+OR+Raja&hl=fr&gl=MA&ceid=MA:fr',
+      'Sport', cap: 2, ageH: 96),
   Source('Formula 1',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCB_qr75-ydFVKSF9Dmo6izg',
       'Sport', cap: 1, ageH: 336),
   Source('ESPN',
       'https://www.youtube.com/feeds/videos.xml?channel_id=UCiWLfSweyRNmLpgEHekhoAg',
       'Sport', cap: 1, ageH: 336),
+  Source('Premier League',
+      'https://www.youtube.com/feeds/videos.xml?channel_id=UCG5qGWdu8nIRZqJ_GgDwQ-w',
+      'Sport', cap: 1, ageH: 336, about: 'Goals and highlights.'),
+  Source('r/soccer', 'https://www.reddit.com/r/soccer/top/.rss?t=day', 'Sport',
+      cap: 1, ageH: 48, about: 'Football news and big moments.'),
 
   // ------------------------------------------------------------------ Anime
   Source('Anime News Network', 'https://www.animenewsnetwork.com/all/rss.xml',
@@ -284,80 +351,109 @@ const kSources = <Source>[
   Source('MyAnimeList News', 'https://myanimelist.net/rss/news.xml', 'Anime',
       cap: 2, ageH: 96),
   Source('Anime Corner', 'https://animecorner.me/feed/', 'Anime',
-      cap: 2, ageH: 96),
-  Source('Otaku USA', 'https://otakuusamagazine.com/feed/', 'Anime',
-      cap: 1, ageH: 168),
-  Source('Anime UK News', 'https://animeuknews.net/feed/', 'Anime',
-      cap: 1, ageH: 168),
+      cap: 2, ageH: 96, about: 'Rankings, new seasons and reviews.'),
   Source('Crunchyroll',
       'https://feeds.feedburner.com/crunchyroll/rss/anime', 'Anime',
       cap: 2, ageH: 96),
+  Source('Otaku USA', 'https://otakuusamagazine.com/feed/', 'Anime',
+      cap: 1, ageH: 168),
   Source('Anime Herald', 'https://www.animeherald.com/feed/', 'Anime',
       cap: 1, ageH: 168),
   Source('r/anime', 'https://www.reddit.com/r/anime/top/.rss?t=day', 'Anime',
       cap: 1, ageH: 48),
 
   // -------------------------------------------------- Morocco / PFE / jobs
-  Source('Morocco — PFE', 'https://news.google.com/rss/search?q=PFE+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+  Source('Morocco — PFE',
+      'https://news.google.com/rss/search?q=PFE+Maroc&hl=fr&gl=MA&ceid=MA:fr',
       'Morocco', cap: 3, ageH: 168, weight: 2,
       about: 'Final-year project (PFE) news in Morocco.'),
   Source('Morocco — stages & PFE',
       'https://news.google.com/rss/search?q=stage+PFE+informatique&hl=fr&gl=MA&ceid=MA:fr',
       'Morocco', cap: 3, ageH: 168, weight: 2,
       about: 'Internships and PFE placements.'),
+  Source('Morocco — stage data & IA',
+      'https://news.google.com/rss/search?q=stage+data+science+OR+%22intelligence+artificielle%22+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+      'Morocco', cap: 2, ageH: 168, weight: 2,
+      about: 'Data / AI internships in Morocco.'),
   Source('Morocco — emplois IT',
       'https://news.google.com/rss/search?q=Maroc+emploi+informatique&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 168),
-  Source('Morocco — data & IA',
-      'https://news.google.com/rss/search?q=Maroc+data+science+emploi+OR+intelligence+artificielle&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 168),
+      'Morocco', cap: 2, ageH: 168, about: 'IT jobs in Morocco.'),
+  Source('Morocco — hackathons & bourses',
+      'https://news.google.com/rss/search?q=hackathon+Maroc+OR+bourse+%C3%A9tudiants+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+      'Morocco', cap: 2, ageH: 240, about: 'Hackathons and scholarships.'),
   Source('Morocco — startups & tech',
       'https://news.google.com/rss/search?q=Morocco+startup+OR+technology&hl=en-US&gl=US&ceid=US:en',
       'Morocco', cap: 2, ageH: 168),
-  Source('Morocco — AI',
-      'https://news.google.com/rss/search?q=Morocco+artificial+intelligence&hl=en-US&gl=US&ceid=US:en',
-      'Morocco', cap: 2, ageH: 168),
-  Source('Morocco — top news',
-      'https://news.google.com/rss?hl=fr&gl=MA&ceid=MA:fr', 'Morocco',
-      cap: 2, ageH: 72),
-  Source('r/Morocco', 'https://www.reddit.com/r/Morocco/top/.rss?t=week',
-      'Morocco', cap: 2, ageH: 168,
-      about: 'Moroccan community discussions.'),
+  Source('Morocco — IA',
+      'https://news.google.com/rss/search?q=Maroc+intelligence+artificielle&hl=fr&gl=MA&ceid=MA:fr',
+      'Morocco', cap: 2, ageH: 168, about: 'AI news from Morocco.'),
 ];
 
-/// Fetch every source, but gently: most run in parallel, Reddit and the other
-/// rate-limited hosts go one at a time so we don't get 429s.
+/// Fetch every source, but gently. Ordinary feeds run a few at a time;
+/// YouTube gets its own small lane (its RSS returns 404 when hit too fast)
+/// and Reddit goes strictly one-at-a-time so we don't get 429s.
 Future<List<List<Item>>> fetchAllSources(List<Source> sources) async {
   final results = List<List<Item>>.generate(sources.length, (_) => const []);
 
-  final slow = <int>[]; // rate-limited hosts, fetched sequentially
+  final reddit = <int>[];
+  final video = <int>[];
   final fast = <int>[];
   for (var i = 0; i < sources.length; i++) {
     final host = Uri.tryParse(sources[i].url)?.host ?? '';
     if (host.contains('reddit.com')) {
-      slow.add(i);
+      reddit.add(i);
+    } else if (host.contains('youtube.com')) {
+      video.add(i);
     } else {
       fast.add(i);
     }
   }
 
-  var next = 0;
+  // Everything except the rate-limited hosts: a handful of parallel lanes.
+  var cursor = 0;
   Future<void> lane() async {
-    while (true) {
-      final index = next < fast.length ? fast[next++] : -1;
-      if (index < 0) return;
+    while (cursor < fast.length) {
+      final index = fast[cursor++];
       results[index] = await fetchSource(sources[index]);
     }
   }
 
   await Future.wait(List.generate(8, (_) => lane()));
 
-  for (final index in slow) {
+  // YouTube throws 404s under load, so fetch it in a small lane and then
+  // quietly retry whatever came back empty, slowly.
+  await _fetchGentle(video, 3, sources, results);
+  final missed = video.where((i) => results[i].isEmpty).toList();
+  if (missed.isNotEmpty) {
+    await Future.delayed(const Duration(milliseconds: 900));
+    await _fetchGentle(missed, 1, sources, results,
+        gap: const Duration(milliseconds: 700));
+  }
+
+  // Reddit rate-limits hard: one at a time, with a gap.
+  for (final index in reddit) {
     results[index] = await fetchSource(sources[index]);
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1800));
   }
 
   return results;
+}
+
+/// Fetch [indices] with at most [width] requests in flight, pausing [gap]
+/// between calls so flaky hosts stay happy.
+Future<void> _fetchGentle(List<int> indices, int width, List<Source> sources,
+    List<List<Item>> results,
+    {Duration gap = const Duration(milliseconds: 200)}) async {
+  var cursor = 0;
+  Future<void> worker() async {
+    while (cursor < indices.length) {
+      final index = indices[cursor++];
+      results[index] = await fetchSource(sources[index]);
+      await Future.delayed(gap);
+    }
+  }
+
+  await Future.wait(List.generate(width, (_) => worker()));
 }
 
 /// Fetch and normalise a single RSS/Atom source.
@@ -376,7 +472,8 @@ Future<List<Item>> fetchSource(Source s) async {
     final out = <Item>[];
 
     // YouTube puts the real blurb in <media:description>, not <description>.
-    final videoDescs = RegExp(r'<media:description>([\s\S]*?)</media:description>')
+    final videoDescs = RegExp(
+            r'<media:description>([\s\S]*?)</media:description>')
         .allMatches(body)
         .map((m) => cleanText(m.group(1)))
         .toList();
@@ -450,8 +547,7 @@ String cleanText(String? s) {
   t = t
       .replaceAll(RegExp(r'submitted by.*', caseSensitive: false), '')
       .replaceAll(
-          RegExp(r'The post .*? appeared first on .*?\.',
-              caseSensitive: false),
+          RegExp(r'The post .*? appeared first on .*?\.', caseSensitive: false),
           '')
       .replaceAll(RegExp(r'Continue reading.*$', caseSensitive: false), '')
       .replaceAll(RegExp(r'Read more.*$', caseSensitive: false), '')
@@ -476,8 +572,18 @@ DateTime? parseDate(String? s) {
       .firstMatch(s);
   if (m == null) return null;
   const months = {
-    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+    'jan': 1,
+    'feb': 2,
+    'mar': 3,
+    'apr': 4,
+    'may': 5,
+    'jun': 6,
+    'jul': 7,
+    'aug': 8,
+    'sep': 9,
+    'oct': 10,
+    'nov': 11,
+    'dec': 12,
   };
   final month = months[m.group(2)!.toLowerCase()];
   if (month == null) return null;

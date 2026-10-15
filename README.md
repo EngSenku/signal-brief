@@ -56,7 +56,7 @@ intent filter are already in `android/app/src/main/AndroidManifest.xml`.
 
 ## What's in it
 
-**Brief** — ~32 ranked items drawn from **128 sources** across nine categories:
+**Brief** — ~32 ranked items drawn from **132 sources** across nine categories:
 AI, Dev, Research, News, Video, Sport, Anime and Morocco (plus All). Category
 chips make it easy to jump straight to your field. Tap any item to see a real
 "What it's about" preview (the article's opening paragraphs, or the video's
@@ -121,8 +121,10 @@ readable-text extractor, and widget smoke tests for every tab.
 - **iOS share-to-app** needs a Share Extension target added in Xcode. The
   Android path works out of the box via `MainActivity.kt`; iOS is not wired up.
 - **Feed URLs** are best-effort. Reddit rate-limits aggressively, so those
-  sources are fetched sequentially with a browser-like user agent; any source
-  that fails is simply skipped on that refresh.
+  sources are fetched one at a time with a browser-like user agent; YouTube's
+  RSS returns 404 when hit too fast, so it runs in its own small lane and any
+  empty result is retried once. Any source that still fails is simply skipped on
+  that refresh.
 - The AI features need a valid NVIDIA key with available credit. Provide one via
   `.env` (or `--dart-define`), or paste it in Settings on first run.
 
