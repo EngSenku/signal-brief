@@ -180,8 +180,13 @@ class MusicService extends ChangeNotifier {
       if (manifest.audioOnly.isEmpty) {
         throw 'No audio stream was available for this video.';
       }
-      final audio = manifest.audioOnly.withHighestBitrate();
-      final ext = audio.container.name == 'webm' ? 'webm' : 'm4a';
+      // Prefer AAC in MP4 (m4a): the most widely supported container for
+      // playback. Fall back to whatever exists (usually Opus/WebM).
+      final m4a =
+          manifest.audioOnly.where((s) => s.container.name == 'mp4').toList();
+      final audio = (m4a.isNotEmpty ? m4a : manifest.audioOnly)
+          .withHighestBitrate();
+      final ext = audio.container.name == 'mp4' ? 'm4a' : 'webm';
       out = File('${_dir!.path}/$id.$ext');
 
       downloadingLabel = 'Downloading audio…';
