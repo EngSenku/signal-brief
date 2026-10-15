@@ -81,8 +81,8 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
     final st = context.read<AppState>();
     final music = context.read<MusicService>();
 
-    // A YouTube link is more likely a song to keep than an article to read,
-    // so offer to download it into the offline Music library.
+    // A YouTube link is more likely a song or a clip to keep than an article
+    // to read, so offer to download it into the offline Media library.
     final yt = <String>[];
     for (final t in texts) {
       final u = MusicService.youtubeUrlIn(t);
@@ -92,7 +92,7 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       final fmt = await _askSaveMusic(yt.length);
       if (!mounted) return;
       if (fmt != null) {
-        setState(() => tab = 4); // the Music tab
+        setState(() => tab = 4); // the Media tab
         for (final u in yt) {
           try {
             final t = await music.download(u, format: fmt);
@@ -248,7 +248,7 @@ class _NavBar extends StatelessWidget {
     (Icons.trending_up_rounded, 'Trends'),
     (Icons.school_rounded, 'Study'),
     (Icons.bookmark_rounded, 'Saved'),
-    (Icons.music_note_rounded, 'Music'),
+    (Icons.perm_media_rounded, 'Media'),
     (Icons.tune_rounded, 'You'),
   ];
 

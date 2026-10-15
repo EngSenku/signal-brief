@@ -118,7 +118,7 @@ class Track {
 /// Your personal, offline library.
 ///
 /// Music is deliberately *not* a feed. You go to YouTube, pick something and
-/// share the link into Signal (or paste it on the Music tab), choose audio or
+/// share the link into Signal (or paste it on the Media tab), choose audio or
 /// video, and the app saves the media on the device. No network needed after.
 ///
 /// Nothing is re-encoded: audio is YouTube's AAC track saved as `.m4a` and

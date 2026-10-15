@@ -91,15 +91,15 @@ class _MusicScreenState extends State<MusicScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text('Music',
+          child: Text('Media',
               style: TextStyle(fontSize: 36, fontWeight: FontWeight.w300)),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(4, 6, 4, 18),
           child: Text(
-            'Your offline library. Find a song or a video on YouTube, tap Share '
-            'and pick Signal — or paste the link here. It downloads to this '
-            'device.',
+            'Your offline music and video library. Find a song or a clip on '
+            'YouTube, tap Share and pick Signal — or paste the link here. It '
+            'downloads to this device.',
             style: TextStyle(color: C.muted, height: 1.4),
           ),
         ),
@@ -175,36 +175,85 @@ class _MusicScreenState extends State<MusicScreen> {
         if (m.current != null) const SizedBox(height: 18),
 
         if (m.tracks.isEmpty)
-        if (m.tracks.isEmpty)
           const EmptyState(
-            icon: Icons.music_note_rounded,
+            icon: Icons.library_music_rounded,
             text: 'Nothing saved yet. Open YouTube, find a song or a video you '
                 'like, hit Share and choose Signal — it will land here, ready '
                 'offline.',
           )
-        else ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
-            child: Row(children: [
-              const Text('Your library',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-              const Spacer(),
-              Text('${m.tracks.length} ${m.tracks.length == 1 ? 'item' : 'items'}',
-                  style: const TextStyle(color: C.muted, fontSize: 12.5)),
-            ]),
-          ),
-          for (final t in m.tracks)
-            _TrackTile(
-              t: t,
-              active: m.currentId == t.id,
-              playing: m.playing && m.currentId == t.id,
-              onTap: () => _open(m, t),
-              onDelete: () => _confirmDelete(m, t),
-            ),
-        ],
+        else
+          ..._library(m),
       ],
     );
   }
+
+  /// The library, split into its two halves.
+  ///
+  /// Keeping this out of the [ListView]'s children avoids the classic
+  /// dangling-`else` trap of a nested `if` inside a collection literal.
+  List<Widget> _library(MusicService m) {
+    final songs = m.tracks.where((t) => !t.video).toList();
+    final clips = m.tracks.where((t) => t.video).toList();
+    return [
+      _SectionHead('Music', songs.length, 'song', 'songs'),
+      if (songs.isEmpty)
+        const _SectionHint('No songs yet — paste a link with the Audio chip '
+            'above to keep one offline.')
+      else
+        for (final t in songs) _tile(m, t),
+      const SizedBox(height: 18),
+      _SectionHead('Video', clips.length, 'video', 'videos'),
+      if (clips.isEmpty)
+        const _SectionHint('No videos yet — paste a link with the Video chip '
+            'above to save a 360p MP4 you can watch offline.')
+      else
+        for (final t in clips) _tile(m, t),
+    ];
+  }
+
+  Widget _tile(MusicService m, Track t) => _TrackTile(
+        t: t,
+        active: m.currentId == t.id,
+        playing: m.playing && m.currentId == t.id,
+        onTap: () => _open(m, t),
+        onDelete: () => _confirmDelete(m, t),
+      );
+}
+
+/// A library section title with its count, e.g. "Music  3 songs".
+class _SectionHead extends StatelessWidget {
+  const _SectionHead(this.label, this.count, this.one, this.many);
+  final String label;
+  final int count;
+  final String one, many;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+        child: Row(children: [
+          Text(label,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+          const Spacer(),
+          Text(
+              count == 0
+                  ? 'none yet'
+                  : '$count ${count == 1 ? one : many}',
+              style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        ]),
+      );
+}
+
+/// The muted line shown in a section that has nothing in it yet.
+class _SectionHint extends StatelessWidget {
+  const _SectionHint(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 2, 14, 10),
+        child: Text(text,
+            style: const TextStyle(color: C.muted, fontSize: 13, height: 1.35)),
+      );
 }
 
 class _TrackTile extends StatelessWidget {

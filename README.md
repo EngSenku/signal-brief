@@ -78,13 +78,14 @@ new papers (arXiv) for the week. Every card shows what it is about, and tapping
 one opens the same "What it's about" + AI-summary sheet as the brief (without
 the flashcard action). Save any of them to your reading list.
 
-**Music** — a personal, *offline* library, and deliberately **not** a feed.
-Find a song or video on YouTube (or YouTube Music), tap **Share** and pick
-Signal — or paste the link on the Music tab. Signal saves it on the device and
-plays it back in-app with a full player (seek, next/previous, playlist), no
-connection needed afterwards. A saved clip is a real video: tap it and it opens
-full-screen with picture and sound, and its row is tagged **Video** with a movie
-glyph so it never looks like a song. Delete an item to reclaim the space.
+**Media** — a personal, *offline* library, and deliberately **not** a feed. It
+has two halves: **Music** and **Video**. Find a song or a video on YouTube (or
+YouTube Music), tap **Share** and pick Signal — or paste the link on the Media
+tab. Signal saves it on the device and plays it back in-app with a full player
+(seek, next/previous, playlist), no connection needed afterwards. A saved clip is
+a real video: tap it and it opens full-screen with picture and sound, and it sits
+in the Video half with a movie glyph so it never looks like a song. Delete an
+item to reclaim the space.
 
 Nothing is re-encoded, so a download is as fast as the network allows:
 **Audio** saves YouTube's own AAC track as a `.m4a` (about 3 MB for a song) and
