@@ -32,6 +32,11 @@ class Item {
   bool carded;
   double score = 0;
 
+  /// YouTube view count, when the feed reports it. In-memory only: used to
+  /// rank video sources by popularity, so great old uploads can beat a dull
+  /// new one.
+  int views;
+
   Item({
     required this.url,
     required this.title,
@@ -44,6 +49,7 @@ class Item {
     List<String>? tags,
     this.offline = false,
     this.carded = false,
+    this.views = 0,
   }) : tags = tags ?? <String>[];
 
   String get id => url;

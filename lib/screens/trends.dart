@@ -107,12 +107,20 @@ class _TrendCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final st = context.watch<AppState>();
     final saved = st.saved.any((s) => s.url == e.url);
+    final item = Item(
+      url: e.url,
+      title: e.title,
+      source: e.source,
+      category: isPaper ? 'Research' : 'Dev',
+      snippet: e.subtitle,
+      date: DateTime.now(),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(
         radius: 22,
         padding: const EdgeInsets.all(16),
-        onTap: () => openLink(e.url),
+        onTap: () => showItemSheet(context, item, showCards: false),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             if (e.tag.isNotEmpty) ...[
@@ -132,24 +140,21 @@ class _TrendCard extends StatelessWidget {
           if (e.subtitle.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(e.subtitle,
-                maxLines: 3,
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: C.muted, height: 1.35, fontSize: 13.5)),
           ],
           const SizedBox(height: 10),
           Row(children: [
             Text(e.source, style: const TextStyle(color: C.muted, fontSize: 12)),
+            const SizedBox(width: 8),
+            const Icon(Icons.auto_awesome, size: 12, color: C.muted),
+            const SizedBox(width: 4),
+            const Text('What it\'s about',
+                style: TextStyle(color: C.muted, fontSize: 12)),
             const Spacer(),
             GestureDetector(
               onTap: () {
-                final item = Item(
-                  url: e.url,
-                  title: e.title,
-                  source: e.source,
-                  category: isPaper ? 'Research' : 'Dev',
-                  snippet: e.subtitle,
-                  date: DateTime.now(),
-                );
                 st.toggleSave(item);
                 showSnack(context, saved ? 'Removed from reading list' : 'Saved to reading list');
               },

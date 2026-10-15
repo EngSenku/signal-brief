@@ -262,7 +262,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final s in kSources) {
       (groups[s.cat] ??= <Source>[]).add(s);
     }
-    const order = ['AI', 'Dev', 'Research', 'News', 'Video', 'Sport', 'Anime', 'Morocco'];
+    const order = [
+      'AI', 'Dev', 'Research', 'News', 'PFE', 'Video', 'Sport', 'Anime', 'Morocco',
+    ];
     final entries = groups.entries.toList()
       ..sort((a, b) {
         final ia = order.indexOf(a.key);

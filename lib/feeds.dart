@@ -387,6 +387,82 @@ const kSources = <Source>[
   Source('Morocco — IA',
       'https://news.google.com/rss/search?q=Maroc+intelligence+artificielle&hl=fr&gl=MA&ceid=MA:fr',
       'Morocco', cap: 2, ageH: 168, about: 'AI news from Morocco.'),
+
+  // ---------------------------------------------------- PFE / internships
+  // A daily sweep of final-year-project ("PFE") and internship openings:
+  // Moroccan job boards, big-company careers and a few international boards.
+  // All of it runs through Google News so we stay on plain RSS.
+  Source('PFE Daba',
+      'https://news.google.com/rss/search?q=site:pfedaba.ma&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 3, ageH: 336, weight: 3,
+      about: 'Aggregated PFE listings across Morocco.'),
+  Source('PFE IA Maroc',
+      'https://news.google.com/rss/search?q=%22stage+PFE%22+IA+2027&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 3, ageH: 336, weight: 3,
+      about: 'AI PFE and internship openings in Morocco.'),
+  Source('PFE Data Science Maroc',
+      'https://news.google.com/rss/search?q=%22stage+PFE%22+data+science&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, weight: 2,
+      about: 'Data-science PFE placements.'),
+  Source('PFE Machine Learning',
+      'https://news.google.com/rss/search?q=%22stage+PFE%22+machine+learning&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Machine-learning PFE placements.'),
+  Source('PFE Cloud & DevOps',
+      'https://news.google.com/rss/search?q=%22stage+PFE%22+cloud+devops&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Cloud and DevOps PFE placements.'),
+  Source('Stage pré-embauche IA',
+      'https://news.google.com/rss/search?q=stage+pr%C3%A9-embauche+IA+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, weight: 2,
+      about: 'Internships that can turn into a first job.'),
+  Source('Stage PFE 2027 Maroc',
+      'https://news.google.com/rss/search?q=stage+PFE+2027+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336,
+      about: '2027 PFE placements as they open.'),
+  Source('Rekrute',
+      'https://news.google.com/rss/search?q=site:rekrute.com+PFE&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, about: 'Rekrute PFE and IT postings.'),
+  Source('Emploi.ma',
+      'https://news.google.com/rss/search?q=site:emploi.ma+PFE&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, about: 'Emploi.ma engineering and IT roles.'),
+  Source('Maroc Emploi',
+      'https://news.google.com/rss/search?q=site:marocemploi.net+stage&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, about: 'Moroccan internship announcements.'),
+  Source('Dreamjob',
+      'https://news.google.com/rss/search?q=site:dreamjob.ma+stage&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, about: 'Internships and graduate roles.'),
+  Source('Indeed Maroc',
+      'https://news.google.com/rss/search?q=site:ma.indeed.com+stage+PFE&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336, about: 'Indeed Morocco PFE listings.'),
+  Source('LinkedIn PFE Maroc',
+      'https://news.google.com/rss/search?q=site:linkedin.com+stage+PFE+Maroc&hl=fr&gl=MA&ceid=MA:fr',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Recruiter posts and PFE roles on LinkedIn.'),
+  Source('Internships abroad',
+      'https://news.google.com/rss/search?q=software+engineering+intern+2027&hl=en-US&gl=US&ceid=US:en',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Software internships outside Morocco.'),
+  Source('ML internships abroad',
+      'https://news.google.com/rss/search?q=machine+learning+internship+2027+Europe&hl=en-US&gl=US&ceid=US:en',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Machine-learning internships in Europe.'),
+  Source('Data internships abroad',
+      'https://news.google.com/rss/search?q=data+engineering+internship+2027&hl=en-US&gl=US&ceid=US:en',
+      'PFE', cap: 2, ageH: 336,
+      about: 'Data-engineering internships abroad.'),
+  Source('Stage IA France',
+      'https://news.google.com/rss/search?q=%22stage+fin+d%27%C3%A9tudes%22+IA+France&hl=fr&gl=FR&ceid=FR:fr',
+      'PFE', cap: 2, ageH: 336,
+      about: 'French end-of-studies AI internships.'),
+  Source('r/Morocco',
+      'https://www.reddit.com/r/Morocco/top/.rss?t=week',
+      'PFE', cap: 1, ageH: 168,
+      about: 'Moroccan community: jobs, PFE and advice.'),
+  Source('r/cscareerquestionsEU',
+      'https://www.reddit.com/r/cscareerquestionsEU/top/.rss?t=week',
+      'PFE', cap: 1, ageH: 168,
+      about: 'Tech internships and careers in Europe.'),
 ];
 
 /// Fetch every source, but gently. Ordinary feeds run a few at a time;
@@ -477,6 +553,11 @@ Future<List<Item>> fetchSource(Source s) async {
         .allMatches(body)
         .map((m) => cleanText(m.group(1)))
         .toList();
+    // ...and the view count in <media:statistics views="…"/>, in entry order.
+    final videoViews = RegExp(r'<media:statistics[^>]*views="(\d+)"')
+        .allMatches(body)
+        .map((m) => int.tryParse(m.group(1)!) ?? 0)
+        .toList();
     final isGoogleNews = s.url.contains('news.google.com');
 
     if (RegExp(r'<feed[\s>]').hasMatch(body)) {
@@ -495,6 +576,7 @@ Future<List<Item>> fetchSource(Source s) async {
               ? (i < videoDescs.length ? videoDescs[i] : '')
               : cleanText(e.summary ?? e.content),
           date: parseDate(e.published ?? e.updated),
+          views: i < videoViews.length ? videoViews[i] : 0,
         ));
       }
     } else {
@@ -662,13 +744,20 @@ Future<List<TrendEntry>> _fetchTrendingModels() async {
     final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
     return list.map((e) {
       final downloads = e['downloads'] ?? 0;
+      final tag = (e['pipeline_tag'] ?? '').toString();
+      final lib = (e['library_name'] ?? '').toString();
+      final tags = (e['tags'] as List? ?? const [])
+          .map((t) => t.toString())
+          .where((t) => t.isNotEmpty && t != tag)
+          .take(4)
+          .join(', ');
       return TrendEntry(
         title: (e['modelId'] ?? e['id'] ?? '').toString(),
-        subtitle: (e['pipeline_tag'] ?? '').toString(),
+        subtitle: tag.isNotEmpty ? tag : (lib.isNotEmpty ? lib : tags),
         url: 'https://huggingface.co/${e['modelId'] ?? e['id']}',
         metric: '${_compact(downloads)} dl',
         source: 'Hugging Face',
-        tag: (e['pipeline_tag'] ?? '').toString(),
+        tag: tag,
       );
     }).toList();
   } catch (_) {

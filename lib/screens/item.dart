@@ -40,6 +40,13 @@ Future<void> openLink(String url) async {
   }
 }
 
+/// "1.2M" / "34.5k" / "812" — for view counts and the like.
+String compactCount(int n) {
+  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+  return '$n';
+}
+
 void showSnack(BuildContext context, String msg) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
@@ -50,7 +57,7 @@ String aiMessage(Object e) => e is AiException
     ? e.message
     : e.toString().replaceFirst('Exception: ', '');
 
-void showItemSheet(BuildContext context, Item it) {
+void showItemSheet(BuildContext context, Item it, {bool showCards = true}) {
   context.read<AppState>().markRead(it);
   showModalBottomSheet(
     context: context,
@@ -59,7 +66,7 @@ void showItemSheet(BuildContext context, Item it) {
     backgroundColor: Colors.transparent,
     builder: (_) => ChangeNotifierProvider.value(
       value: context.read<AppState>(),
-      child: ItemSheet(it),
+      child: ItemSheet(it, showCards: showCards),
     ),
   );
 }
@@ -94,6 +101,10 @@ class ItemCard extends StatelessWidget {
                     style: const TextStyle(color: C.muted, fontSize: 13)),
               ),
               const Spacer(),
+              if (it.category == 'Video' && it.views > 0) ...[
+                Text('${compactCount(it.views)} views · ',
+                    style: const TextStyle(color: C.muted, fontSize: 12)),
+              ],
               Text(ago(it.date), style: const TextStyle(color: C.muted, fontSize: 12)),
             ]),
             const SizedBox(height: 10),
@@ -164,8 +175,11 @@ class ItemCard extends StatelessWidget {
 }
 
 class ItemSheet extends StatefulWidget {
-  const ItemSheet(this.it, {super.key});
+  const ItemSheet(this.it, {super.key, this.showCards = true});
   final Item it;
+
+  /// Trends cards open this sheet without the flashcard action.
+  final bool showCards;
   @override
   State<ItemSheet> createState() => _ItemSheetState();
 }
@@ -239,7 +253,9 @@ class _ItemSheetState extends State<ItemSheet> {
               ),
             ),
             const SizedBox(height: 20),
-            Text('${it.category} · ${it.source} · ${ago(it.date)}',
+            Text(
+                '${it.category} · ${it.source} · ${ago(it.date)}'
+                '${it.category == 'Video' && it.views > 0 ? ' · ${compactCount(it.views)} views' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 10),
             Text(it.title,
@@ -340,10 +356,12 @@ class _ItemSheetState extends State<ItemSheet> {
                   onTap: () => _offline(st, it),
                 ),
               ),
-              const SizedBox(width: 10),
-              PillButton('Flashcards',
-                  icon: Icons.style_rounded, busy: busyCards,
-                  onTap: () => _cards(st, it)),
+              if (widget.showCards) ...[
+                const SizedBox(width: 10),
+                PillButton('Flashcards',
+                    icon: Icons.style_rounded, busy: busyCards,
+                    onTap: () => _cards(st, it)),
+              ],
             ]),
             const SizedBox(height: 10),
             Row(children: [

@@ -14,7 +14,10 @@ import 'models.dart';
 import 'services/notifications.dart';
 import 'study.dart';
 
-const kCats = ['All', 'AI', 'Dev', 'Research', 'News', 'Video', 'Sport', 'Anime', 'Morocco'];
+const kCats = [
+  'All', 'AI', 'Dev', 'Research', 'News', 'PFE', 'Video', 'Sport', 'Anime',
+  'Morocco',
+];
 
 class AppState extends ChangeNotifier {
   late SharedPreferences _p;
@@ -258,20 +261,29 @@ class AppState extends ChangeNotifier {
 
       for (var i = 0; i < active.length; i++) {
         final s = active[i];
+        final isVideo = s.cat == 'Video';
         final scored = <Item>[];
         for (final it in results[i]) {
           final hrs =
               it.date == null ? 24.0 : max(0, now.difference(it.date!).inHours).toDouble();
-          if (hrs > s.ageH) continue;
+          // Video is the one exception to freshness: a genuinely popular older
+          // upload can beat a brand-new, dull one.
+          if (!isVideo && hrs > s.ageH) continue;
           final hay = '${it.title} ${it.snippet}'.toLowerCase();
           if (mute.any((m) => hay.contains(m.toLowerCase()))) continue;
           var sc = s.weight + 6 / (1 + hrs / 24);
+          if (isVideo && it.views > 0) {
+            // Rank by popularity (log scale) plus a gentle recency nudge.
+            sc = s.weight + 2.4 * (log(it.views + 1) / ln10) + 1.5 / (1 + hrs / 336);
+          }
           sc += min(3, boost.where((b) => hay.contains(b.toLowerCase())).length) * 2.5;
           it.score = sc;
           scored.add(it);
         }
         scored.sort((a, b) => b.score.compareTo(a.score));
-        for (final it in scored.take(s.cap)) {
+        // Videos get a wider net so the most-watched recent upload wins.
+        final cap = isVideo ? max(s.cap, 3) : s.cap;
+        for (final it in scored.take(cap)) {
           if (seen.contains(it.url) || seen.contains(it.title.toLowerCase())) continue;
           seen..add(it.url)..add(it.title.toLowerCase());
           picked.add(it);
@@ -291,10 +303,10 @@ class AppState extends ChangeNotifier {
           (byCat[it.category] ??= <Item>[]).add(it);
         }
         const quota = <String, int>{
-          'AI': 8, 'Dev': 5, 'Research': 4, 'News': 5,
+          'AI': 8, 'Dev': 5, 'Research': 4, 'News': 5, 'PFE': 4,
           'Video': 4, 'Morocco': 3, 'Sport': 2, 'Anime': 2,
         };
-        const total = 32;
+        const total = 36;
         final chosen = <Item>[];
         final used = <String>{};
         for (final e in quota.entries) {
