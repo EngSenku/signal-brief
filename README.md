@@ -7,7 +7,8 @@ you read into something you actually remember.
 
 A Flutter app, Android-first. Everything is stored on the phone: your reading
 list, your flashcards, the offline music and video library. The only network
-calls are to the feeds, the trends APIs, and NVIDIA if you switch AI on.
+calls are the feeds, the trends APIs, YouTube when you save media, and NVIDIA if
+you switch AI on.
 
 Every category ends. There is no infinite scroll and no algorithmic next-up, and
 you can set a daily time limit that locks the app when it runs out.
@@ -33,8 +34,8 @@ flutter build apk --release --split-per-abi
 # build/app/outputs/flutter-apk/app-x86_64-release.apk      ~23 MB
 ```
 
-Requires Flutter 3.44 / Dart 3.12 or newer. Android is the supported target; the
-iOS and desktop folders are there but untested.
+Built with Flutter 3.44 / Dart 3.12. Android is the supported target; the iOS
+and desktop folders are there but untested.
 
 ## First run
 
