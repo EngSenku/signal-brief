@@ -29,52 +29,42 @@ class _StalledException implements Exception {
   const _StalledException();
 }
 
+/// User agent that goes with the VISIONOS client identity below.
+const String _visionOsUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 '
+    '(KHTML, like Gecko) Version/26.0 Safari/605.1.15';
+
 /// The VISIONOS InnerTube client (the one yt-dlp uses): currently the most
 /// reliable logged-out client. It needs no PO token and no JavaScript
 /// challenge, and — unlike the default clients — it can be asked for streams
 /// without fetching the watch page.
-const YoutubeApiClient _visionOs = YoutubeApiClient({
-  'context': {
-    'client': {
-      'clientName': 'VISIONOS',
-      'clientVersion': '1.02',
-      'deviceMake': 'Apple',
-      'deviceModel': 'RealityDevice17,1',
-      'userAgent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 '
-              '(KHTML, like Gecko) Version/26.0 Safari/605.1.15',
-      'osName': 'visionOS',
-      'osVersion': '26.5.23O471',
-      'hl': 'en',
-      'timeZone': 'UTC',
-      'utcOffsetMinutes': 0,
-    },
-  },
-}, 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
-
-/// Audio clients, tried in order. VISIONOS leads: it is the most reliable
-/// logged-out client, needs no PO token, and can be asked for streams without
-/// the watch page. `_manifest` picks the first one that answers usefully.
-final List<YoutubeApiClient> _ytClients = <YoutubeApiClient>[
-  _visionOs,
-  YoutubeApiClient.ios,
-  YoutubeApiClient.androidVr,
-  YoutubeApiClient.androidSdkless,
-  YoutubeApiClient.tv,
-  YoutubeApiClient.android,
-];
+///
+/// Audio clients, tried in order. VISIONOS leads because it is the one client
+/// that is *not* asked for a PO token: an Android client will happily reply with
+/// an audio URL, but that URL only ever serves the first megabyte of the file
+/// (HTTP 403 past it), which is indistinguishable from a stall mid-download.
+List<YoutubeApiClient> _audioClients(YoutubeApiClient visionOs) =>
+    <YoutubeApiClient>[
+      visionOs,
+      YoutubeApiClient.androidVr,
+      YoutubeApiClient.androidSdkless,
+      YoutubeApiClient.android,
+      YoutubeApiClient.ios,
+      YoutubeApiClient.tv,
+    ];
 
 /// For a saved 360p video we need a client that returns YouTube's ready-made
 /// *muxed* file; the Android clients do, VISIONOS/ios do not. Ordered so we hit
 /// a working one immediately instead of probing the others first.
-final List<YoutubeApiClient> _videoClients = <YoutubeApiClient>[
-  YoutubeApiClient.androidVr,
-  YoutubeApiClient.androidSdkless,
-  YoutubeApiClient.android,
-  _visionOs,
-  YoutubeApiClient.ios,
-  YoutubeApiClient.tv,
-];
+List<YoutubeApiClient> _videoClients(YoutubeApiClient visionOs) =>
+    <YoutubeApiClient>[
+      YoutubeApiClient.androidVr,
+      YoutubeApiClient.androidSdkless,
+      YoutubeApiClient.android,
+      visionOs,
+      YoutubeApiClient.ios,
+      YoutubeApiClient.tv,
+    ];
 
 class Track {
   final String id;
@@ -135,7 +125,9 @@ class Track {
 /// keeps downloads small and instant and the app free of a heavy transcoder.
 ///
 /// Extraction avoids the watch page (which YouTube redirects to its /sorry/
-/// rate-limit wall) and uses the VISIONOS InnerTube client.
+/// rate-limit wall) and uses the VISIONOS InnerTube client, the only logged-out
+/// client YouTube still serves whole files to — the Android clients answer with
+/// a one-megabyte preview of the audio.
 class MusicService extends ChangeNotifier {
   final _player = AudioPlayer();
   YoutubeExplode? _yt;
@@ -335,31 +327,126 @@ class MusicService extends ChangeNotifier {
     }
   }
 
+  /// The `visitorData` value YouTube expects on player requests.
+  ///
+  /// youtube_explode only sends this for its own `IOS` client, so a bare
+  /// VISIONOS client is answered with "Sign in to confirm you're not a bot" and
+  /// the library quietly falls back to an Android client. One anonymous fetch
+  /// per run is enough; if it fails we carry on without it.
+  String? _visitorId;
+  bool _visitorLookupDone = false;
+
+  Future<String?> _lookupVisitorId() async {
+    if (_visitorLookupDone) return _visitorId;
+    _visitorLookupDone = true;
+    try {
+      final r = await http.get(
+        Uri.parse('https://www.youtube.com/sw.js_data'),
+        headers: {
+          'User-Agent': _visionOsUserAgent,
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      _visitorId = visitorIdFromSwJsData(r.body);
+    } catch (_) {
+      // Not fatal: plenty of videos answer VISIONOS without it.
+    }
+    return _visitorId;
+  }
+
+  YoutubeApiClient? _visionOs;
+
+  Future<YoutubeApiClient> _visionOsClient() async {
+    final cached = _visionOs;
+    if (cached != null) return cached;
+    final visitor = await _lookupVisitorId();
+    return _visionOs = YoutubeApiClient({
+      'context': {
+        'client': {
+          'clientName': 'VISIONOS',
+          'clientVersion': '1.02',
+          'deviceMake': 'Apple',
+          'deviceModel': 'RealityDevice17,1',
+          'userAgent': _visionOsUserAgent,
+          'osName': 'visionOS',
+          'osVersion': '26.5.23O471',
+          'hl': 'en',
+          'timeZone': 'UTC',
+          'utcOffsetMinutes': 0,
+          if (visitor != null) 'visitorData': visitor,
+        },
+      },
+    }, 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
+  }
+
+  /// Whether the server will hand over the *whole* file behind [stream].
+  ///
+  /// VISIONOS will. The Android clients answer with a URL that stops after the
+  /// first megabyte — a preview of the track — so asking for the last byte is a
+  /// single cheap request that tells us before committing to a long download.
+  Future<bool> _servesWholeFile(StreamInfo stream) async {
+    final total = stream.size.totalBytes;
+    if (total <= 1) return true;
+    try {
+      final r = await http.get(stream.url, headers: {
+        'Range': 'bytes=${total - 1}-${total - 1}',
+      }).timeout(const Duration(seconds: 10));
+      return r.statusCode == 200 || r.statusCode == 206;
+    } catch (_) {
+      return true; // Network trouble is the download's problem to report.
+    }
+  }
+
   /// The stream manifest for [id], obtained with a single InnerTube client.
   ///
   /// Handing *every* client to `getManifest` makes the library query all of
   /// them (a player request plus a HEAD each), which is slow on a mobile
   /// connection. We stop at the first client that gives us what we need.
   Future<StreamManifest> _manifest(String id, {required bool video}) async {
-    StreamManifest? fallback;
-    Object? last;
-    for (final client in video ? _videoClients : _ytClients) {
+    final visionOs = await _visionOsClient();
+    final clients =
+        video ? _videoClients(visionOs) : _audioClients(visionOs);
+    StreamManifest? partial; // audio-only preview, or video without a 360p file
+    Object? error;
+
+    for (final client in clients) {
       try {
         final m = await _youtube.videos.streamsClient
             .getManifest(id, ytClients: [client], requireWatchPage: false)
             .timeout(const Duration(seconds: 25));
-        // Video is saved as YouTube's ready-made 360p file, so we need a client
-        // that returns a muxed stream; for audio the audio track is enough.
-        final usable = video ? m.muxed.isNotEmpty : m.audioOnly.isNotEmpty;
-        if (usable) return m;
-        if (m.audioOnly.isNotEmpty || m.muxed.isNotEmpty) fallback ??= m;
+
+        // Video is saved as YouTube's ready-made 360p file, so the client has
+        // to return a muxed stream; for audio the audio track is enough.
+        if (video) {
+          if (m.muxed.isNotEmpty) return m;
+          partial ??= m;
+          continue;
+        }
+
+        final track = _pickAudio(m);
+        if (track == null) continue;
+        // VISIONOS serves the whole file; other clients may only offer a preview.
+        if (identical(client, visionOs) || await _servesWholeFile(track)) {
+          return m;
+        }
+        partial ??= m;
       } catch (e) {
-        last = e;
+        error = e;
       }
     }
-    if (fallback != null) return fallback;
+
+    if (partial != null) {
+      // Nothing better than a one-megabyte audio preview was on offer. Starting
+      // anyway would burn a minute and then fail, so say what is wrong.
+      if (!video) {
+        throw const MusicException(
+            'YouTube is only offering the start of this track right now. '
+            'Try again in a little while.');
+      }
+      return partial; // download() reports that no 360p file was found
+    }
     throw MusicException(
-        last == null ? 'Could not read this video.' : _friendly(last));
+        error == null ? 'Could not read this video.' : _friendly(error));
   }
 
   /// Streams [stream] to [dest], reporting progress, speed and how much arrived.
@@ -582,3 +669,21 @@ class MusicService extends ChangeNotifier {
 /// The extension used for a saved item: video is `.mp4`, audio is `.m4a`.
 @visibleForTesting
 String musicFileExtension({required bool video}) => video ? '.mp4' : '.m4a';
+
+/// Pull the anonymous `visitorData` value out of YouTube's `sw.js_data` reply.
+///
+/// The endpoint answers with a `)]}'` anti-JSON-hijacking prefix followed by a
+/// nested array; the visitor id sits at `[0][2][0][0][13]`. Anything unexpected
+/// returns null, so a change on YouTube's side can never break downloads.
+@visibleForTesting
+String? visitorIdFromSwJsData(String body) {
+  try {
+    var text = body.trimLeft();
+    if (text.startsWith(")]}'")) text = text.substring(4);
+    final data = json.decode(text) as List<dynamic>;
+    final id = data[0][2][0][0][13];
+    return id is String && id.isNotEmpty ? id : null;
+  } catch (_) {
+    return null;
+  }
+}

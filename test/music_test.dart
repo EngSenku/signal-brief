@@ -58,4 +58,19 @@ void main() {
       expect(musicFileExtension(video: true), '.mp4');
     });
   });
+
+  group('visitor id', () {
+    test('pulls the id out of an sw.js_data reply', () {
+      const body = ")]}'\n"
+          '[["yt.sw.adr",null,[[["ar","MA",null,"1.2.3.4",null,null,null,null,'
+          'null,null,null,"Apple","","THE_VISITOR_ID"]]]]]';
+      expect(visitorIdFromSwJsData(body), 'THE_VISITOR_ID');
+    });
+
+    test('null when the reply is not the shape we expect', () {
+      expect(visitorIdFromSwJsData(''), isNull);
+      expect(visitorIdFromSwJsData('not json'), isNull);
+      expect(visitorIdFromSwJsData(')]}\'\n[[]]'), isNull);
+    });
+  });
 }

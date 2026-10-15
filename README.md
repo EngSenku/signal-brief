@@ -159,20 +159,31 @@ smoke tests for every tab.
 - **Music downloads.** Items are downloaded from a link you choose, using
   `youtube_explode_dart`; `just_audio` plays them back (audio plays in-app; a
   saved video plays its audio track). Media is fetched from YouTube's InnerTube
-  player API only, with the VISIONOS client, and deliberately *without* touching
-  the watch page — YouTube sends watch-page requests to a rate-limit `/sorry/`
-  page far more readily. Metadata comes from the oEmbed endpoint. **Nothing is
-  transcoded**: audio is YouTube's AAC stream saved as `.m4a` and video is its
-  ready-made 360p MP4, so the app ships no media codecs and stays small. Even so,
-  downloading from YouTube is against YouTube's Terms of Service, the extractor
-  depends on YouTube's internals, and a busy IP can still be rate-limited; use it
-  for personal listening and think twice before shipping it publicly.
-- **Download speed.** YouTube throttles these media URLs to roughly 1 Mbit/s
-  (the same no matter which client asks), so the wait scales with file size —
-  which is exactly why Signal keeps the media small (≈3 MB audio, 360p video)
-  instead of transcoding or grabbing 4K. It also stops at the first working
-  InnerTube client instead of querying all of them, and the progress line shows
-  the megabytes received so a slow link is visibly moving.
+  player API only and deliberately *without* touching the watch page — YouTube
+  sends watch-page requests to a rate-limit `/sorry/` page far more readily.
+  Metadata comes from the oEmbed endpoint. **Nothing is transcoded**: audio is
+  YouTube's AAC stream saved as `.m4a` and video is its ready-made 360p MP4, so
+  the app ships no media codecs and stays small.
+- **Why the VISIONOS client.** YouTube now asks most logged-out clients for a
+  "PO token". A client without one still answers with an audio URL, but that URL
+  only ever serves the **first megabyte** of the file and answers `403` past it —
+  which looks exactly like a download that hangs at 0 %. The **VISIONOS** client
+  is not asked for a PO token, but it needs the anonymous `visitorData` value
+  that `youtube_explode_dart` only sends for its `IOS` client. Signal fetches
+  that value once per run (and caches it), sends it with VISIONOS, and so gets a
+  complete audio URL. Video still comes from an Android client, which is the only
+  kind that offers YouTube's ready-made muxed 360p file. If no client offers more
+  than the one-megabyte preview, Signal says so instead of pretending to
+  download. Downloading from YouTube is against YouTube's Terms of Service, the
+  extractor depends on YouTube's internals, and a busy IP can still be
+  rate-limited; use it for personal listening and think twice before shipping it
+  publicly.
+- **Download speed.** YouTube throttles these media URLs, so the wait scales
+  with file size — which is exactly why Signal keeps the media small (≈3 MB
+  audio, 360p video) instead of transcoding or grabbing 4K. It stops at the first
+  working InnerTube client instead of querying all of them, the request is torn
+  down and retried if the server goes quiet for 15 s, and the progress line shows
+  megabytes received plus live speed and ETA so a slow link is visibly moving.
 
 ## License
 
