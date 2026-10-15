@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 
 import '../services/music.dart';
 import '../theme.dart';
@@ -71,6 +72,17 @@ class _MusicScreenState extends State<MusicScreen> {
     if (ok == true) await m.delete(t);
   }
 
+  /// Tapping a row: a song toggles in place, a clip opens its own screen.
+  Future<void> _open(MusicService m, Track t) async {
+    if (!t.video) {
+      m.currentId == t.id ? m.toggle() : m.play(t);
+      return;
+    }
+    if (m.currentId != t.id) await m.play(t);
+    if (!mounted) return;
+    await watchVideo(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = context.watch<MusicService>();
@@ -85,8 +97,9 @@ class _MusicScreenState extends State<MusicScreen> {
         const Padding(
           padding: EdgeInsets.fromLTRB(4, 6, 4, 18),
           child: Text(
-            'Your offline library. Find a song on YouTube, tap Share and pick '
-            'Signal — or paste the link here. It downloads to this device.',
+            'Your offline library. Find a song or a video on YouTube, tap Share '
+            'and pick Signal — or paste the link here. It downloads to this '
+            'device.',
             style: TextStyle(color: C.muted, height: 1.4),
           ),
         ),
@@ -98,8 +111,8 @@ class _MusicScreenState extends State<MusicScreen> {
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
             const Text(
-                'Paste a link and it saves here. Audio is a .m4a file (same '
-                'quality as an MP3); video is a 360p .mp4.',
+                'Audio saves as a .m4a (same quality as an MP3); video saves '
+                'as a 360p .mp4.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             ChipRow(
@@ -108,7 +121,7 @@ class _MusicScreenState extends State<MusicScreen> {
               onChanged: (v) => setState(() => _format =
                   v == 'Video' ? SaveFormat.video : SaveFormat.audio),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
             TextField(
               controller: _link,
               enabled: !m.downloading,
@@ -117,9 +130,10 @@ class _MusicScreenState extends State<MusicScreen> {
               decoration: InputDecoration(
                 hintText: 'https://youtu.be/…',
                 hintStyle: const TextStyle(color: C.muted),
-                isDense: true,
                 filled: true,
                 fillColor: C.faint,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none),
@@ -161,10 +175,12 @@ class _MusicScreenState extends State<MusicScreen> {
         if (m.current != null) const SizedBox(height: 18),
 
         if (m.tracks.isEmpty)
+        if (m.tracks.isEmpty)
           const EmptyState(
             icon: Icons.music_note_rounded,
-            text: 'No songs yet. Open YouTube, find something you like, hit '
-                'Share and choose Signal — it will land here, ready offline.',
+            text: 'Nothing saved yet. Open YouTube, find a song or a video you '
+                'like, hit Share and choose Signal — it will land here, ready '
+                'offline.',
           )
         else ...[
           Padding(
@@ -173,7 +189,7 @@ class _MusicScreenState extends State<MusicScreen> {
               const Text('Your library',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
               const Spacer(),
-              Text('${m.tracks.length} ${m.tracks.length == 1 ? 'song' : 'songs'}',
+              Text('${m.tracks.length} ${m.tracks.length == 1 ? 'item' : 'items'}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             ]),
           ),
@@ -182,7 +198,7 @@ class _MusicScreenState extends State<MusicScreen> {
               t: t,
               active: m.currentId == t.id,
               playing: m.playing && m.currentId == t.id,
-              onTap: () => m.currentId == t.id ? m.toggle() : m.play(t),
+              onTap: () => _open(m, t),
               onDelete: () => _confirmDelete(m, t),
             ),
         ],
@@ -213,7 +229,7 @@ class _TrackTile extends StatelessWidget {
           olive: active,
           onTap: onTap,
           child: Row(children: [
-            _Art(t.thumb, size: 52),
+            _Art(t.thumb, size: 52, video: t.video),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -241,14 +257,17 @@ class _TrackTile extends StatelessWidget {
             ],
             Text(_clock(Duration(milliseconds: t.durationMs)),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
-            const SizedBox(width: 8),
+            // Keep the delete target a good distance from the play button: a
+            // thumb reaching for play must not land on delete.
+            const SizedBox(width: 14),
             GestureDetector(
               onTap: onDelete,
               child: const Padding(
-                padding: EdgeInsets.all(6),
+                padding: EdgeInsets.all(10),
                 child: Icon(Icons.delete_outline_rounded, size: 20, color: C.muted),
               ),
             ),
+            const SizedBox(width: 10),
             Icon(
               playing
                   ? Icons.pause_circle_filled_rounded
@@ -276,7 +295,7 @@ class _NowPlaying extends StatelessWidget {
       olive: true,
       child: Column(children: [
         Row(children: [
-          _Art(t.thumb, size: 62),
+          _Art(t.thumb, size: 62, video: t.video),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -291,10 +310,28 @@ class _NowPlaying extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: C.muted, fontSize: 13)),
+                if (t.video) ...[
+                  const SizedBox(height: 5),
+                  const Row(children: [
+                    Icon(Icons.movie_rounded, size: 13, color: C.muted),
+                    SizedBox(width: 5),
+                    Text('Video · 360p',
+                        style: TextStyle(color: C.muted, fontSize: 12)),
+                  ]),
+                ],
               ],
             ),
           ),
         ]),
+        if (t.video) ...[
+          const SizedBox(height: 12),
+          Row(children: [
+            PillButton('Watch video',
+                icon: Icons.play_circle_outline_rounded,
+                filled: true,
+                onTap: () => watchVideo(context)),
+          ]),
+        ],
         const SizedBox(height: 8),
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
@@ -354,9 +391,13 @@ class _NowPlaying extends StatelessWidget {
 }
 
 class _Art extends StatelessWidget {
-  const _Art(this.url, {required this.size});
+  const _Art(this.url, {required this.size, this.video = false});
   final String? url;
   final double size;
+
+  /// Where the artwork is missing (offline, or a clip without a poster), a
+  /// video shows a movie glyph so a saved clip never looks like a song.
+  final bool video;
 
   @override
   Widget build(BuildContext context) => ClipRRect(
@@ -365,17 +406,138 @@ class _Art extends StatelessWidget {
           width: size,
           height: size,
           child: (url == null || url!.isEmpty)
-              ? Container(
-                  color: C.faint,
-                  child: const Icon(Icons.music_note_rounded, color: C.muted))
+              ? _fallback()
               : Image.network(
                   url!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: C.faint,
-                    child: const Icon(Icons.music_note_rounded, color: C.muted),
-                  ),
+                  errorBuilder: (_, __, ___) => _fallback(),
                 ),
         ),
       );
+
+  Widget _fallback() => Container(
+        color: C.faint,
+        child: Icon(video ? Icons.movie_rounded : Icons.music_note_rounded,
+            color: C.muted),
+      );
+}
+
+/// Open the full-screen player for the clip that is loaded.
+Future<void> watchVideo(BuildContext context) => Navigator.of(context)
+    .push(MaterialPageRoute<void>(builder: (_) => const _VideoPage()));
+
+/// Full-screen playback for a saved clip, with picture.
+class _VideoPage extends StatelessWidget {
+  const _VideoPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final m = context.watch<MusicService>();
+    final t = m.current;
+    final c = m.videoController;
+    final total = m.duration.inMilliseconds > 0
+        ? m.duration
+        : Duration(milliseconds: t?.durationMs ?? 0);
+    final pos = m.position > total ? total : m.position;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(children: [
+          Row(children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              color: Colors.white,
+              tooltip: 'Close',
+              icon: const Icon(Icons.close_rounded),
+            ),
+            Expanded(
+              child: Text(t?.title ?? 'Video',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 15.5, fontWeight: FontWeight.w500)),
+            ),
+          ]),
+          Expanded(
+            child: Center(
+              child: (c == null || !c.value.isInitialized)
+                  ? const Icon(Icons.movie_rounded, size: 46, color: C.muted)
+                  : AspectRatio(
+                      aspectRatio: c.value.aspectRatio,
+                      child: VideoPlayer(c),
+                    ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 14, 10, 8),
+            child: Column(children: [
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: C.lime,
+                  thumbColor: C.lime,
+                  inactiveTrackColor: const Color(0x33FFFFFF),
+                  trackHeight: 3,
+                  overlayColor: Colors.transparent,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                ),
+                child: Slider(
+                  value: total.inMilliseconds == 0
+                      ? 0
+                      : pos.inMilliseconds
+                          .clamp(0, total.inMilliseconds)
+                          .toDouble(),
+                  max: total.inMilliseconds == 0
+                      ? 1
+                      : total.inMilliseconds.toDouble(),
+                  onChanged: (v) => m.seek(Duration(milliseconds: v.round())),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Row(children: [
+                  Text(_clock(pos),
+                      style: const TextStyle(color: C.muted, fontSize: 12)),
+                  const Spacer(),
+                  Text(_clock(total),
+                      style: const TextStyle(color: C.muted, fontSize: 12)),
+                ]),
+              ),
+              const SizedBox(height: 6),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                IconButton(
+                  iconSize: 34,
+                  color: Colors.white,
+                  onPressed: m.previous,
+                  icon: const Icon(Icons.skip_previous_rounded),
+                ),
+                const SizedBox(width: 18),
+                GestureDetector(
+                  onTap: m.toggle,
+                  child: Container(
+                    width: 62,
+                    height: 62,
+                    decoration: const BoxDecoration(
+                        color: C.lime, shape: BoxShape.circle),
+                    child: Icon(
+                        m.playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 34),
+                  ),
+                ),
+                const SizedBox(width: 18),
+                IconButton(
+                  iconSize: 34,
+                  color: Colors.white,
+                  onPressed: m.next,
+                  icon: const Icon(Icons.skip_next_rounded),
+                ),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
 }

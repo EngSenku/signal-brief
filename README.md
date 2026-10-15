@@ -82,7 +82,9 @@ the flashcard action). Save any of them to your reading list.
 Find a song or video on YouTube (or YouTube Music), tap **Share** and pick
 Signal — or paste the link on the Music tab. Signal saves it on the device and
 plays it back in-app with a full player (seek, next/previous, playlist), no
-connection needed afterwards. Delete an item to reclaim the space.
+connection needed afterwards. A saved clip is a real video: tap it and it opens
+full-screen with picture and sound, and its row is tagged **Video** with a movie
+glyph so it never looks like a song. Delete an item to reclaim the space.
 
 Nothing is re-encoded, so a download is as fast as the network allows:
 **Audio** saves YouTube's own AAC track as a `.m4a` (about 3 MB for a song) and
@@ -157,13 +159,17 @@ smoke tests for every tab.
 - The AI features need a valid NVIDIA key with available credit. Provide one via
   `.env` (or `--dart-define`), or paste it in Settings on first run.
 - **Music downloads.** Items are downloaded from a link you choose, using
-  `youtube_explode_dart`; `just_audio` plays them back (audio plays in-app; a
-  saved video plays its audio track). Media is fetched from YouTube's InnerTube
+  `youtube_explode_dart`. Playback is split by what was saved: songs go through
+  `just_audio`, while a saved clip goes through `video_player` so its picture is
+  actually shown (the two never play at once — whichever item is current owns
+  playback, and the audio listeners stand down while a clip is loaded). Media is
+  fetched from YouTube's InnerTube
   player API only and deliberately *without* touching the watch page — YouTube
   sends watch-page requests to a rate-limit `/sorry/` page far more readily.
   Metadata comes from the oEmbed endpoint. **Nothing is transcoded**: audio is
   YouTube's AAC stream saved as `.m4a` and video is its ready-made 360p MP4, so
-  the app ships no media codecs and stays small.
+  the app ships no media codecs and stays small (`video_player` adds only ~0.3 MB,
+  because `just_audio` already bundles the same ExoPlayer/Media3 stack).
 - **Why the VISIONOS client.** YouTube now asks most logged-out clients for a
   "PO token". A client without one still answers with an audio URL, but that URL
   only ever serves the **first megabyte** of the file and answers `403` past it —

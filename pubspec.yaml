@@ -30,6 +30,9 @@ dependencies:
   # device, and play it back in-app.
   just_audio: ^0.10.6
   youtube_explode_dart: ^3.1.0
+  # A saved video is a real 360p MP4, so it plays with picture: audio goes
+  # through just_audio, video through the platform player.
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:

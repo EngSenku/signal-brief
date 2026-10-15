@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// What to save from a YouTube link.
@@ -130,6 +131,24 @@ class Track {
 /// a one-megabyte preview of the audio.
 class MusicService extends ChangeNotifier {
   final _player = AudioPlayer();
+
+  /// A saved clip plays through a real video surface so the picture is
+  /// visible; songs keep using the audio player. Only one of the two ever owns
+  /// playback at a time.
+  VideoPlayerController? _video;
+
+  /// The live video controller, or null while what plays is audio.
+  VideoPlayerController? get videoController => _video;
+
+  /// True once the current clip's video surface is ready to draw.
+  bool get videoReady => _video?.value.isInitialized ?? false;
+
+  /// Whether the item currently playing was saved as a video.
+  bool get isVideo => current?.video ?? false;
+
+  /// Guards against firing the "clip finished" advance more than once.
+  bool _completionFired = false;
+
   YoutubeExplode? _yt;
 
   List<Track> tracks = [];
@@ -191,16 +210,21 @@ class MusicService extends ChangeNotifier {
     }
 
     _player.playerStateStream.listen((s) {
+      // While a clip owns playback the audio player is idle; ignore its
+      // bookkeeping so it cannot clear `playing` under the video.
+      if (_video != null) return;
       final done = s.processingState == ProcessingState.completed;
       playing = s.playing && !done;
       if (done) _onComplete();
       notifyListeners();
     });
     _player.positionStream.listen((p) {
+      if (_video != null) return;
       position = p;
       notifyListeners();
     });
     _player.durationStream.listen((d) {
+      if (_video != null) return;
       if (d != null && d > Duration.zero) duration = d;
       notifyListeners();
     });
@@ -596,7 +620,10 @@ class MusicService extends ChangeNotifier {
 
   Future<void> delete(Track t) async {
     try {
-      if (currentId == t.id) await _player.stop();
+      if (currentId == t.id) {
+        await _stopVideo();
+        await _stopAudio();
+      }
       tracks.removeWhere((x) => x.id == t.id);
       try {
         await File(t.filePath).delete();
@@ -611,6 +638,7 @@ class MusicService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Start [t]: clips get a video surface, songs the audio player.
   Future<void> play(Track t) async {
     try {
       currentId = t.id;
@@ -618,16 +646,88 @@ class MusicService extends ChangeNotifier {
       duration = Duration(milliseconds: t.durationMs);
       playing = true;
       notifyListeners();
-      await _player.setFilePath(t.filePath);
-      await _player.play();
+      if (t.video) {
+        await _stopAudio();
+        await _loadVideo(t);
+      } else {
+        await _stopVideo();
+        await _player.setFilePath(t.filePath);
+        await _player.play();
+      }
     } catch (e) {
       lastError = _friendly(e);
       notifyListeners();
     }
   }
 
+  /// Spin up the video controller for [t] and start it.
+  Future<void> _loadVideo(Track t) async {
+    await _stopVideo();
+    _completionFired = false;
+    final c = VideoPlayerController.file(File(t.filePath));
+    _video = c;
+    c.addListener(_onVideoTick);
+    await c.initialize();
+    if (c.value.duration > Duration.zero) duration = c.value.duration;
+    await c.play();
+    _onVideoTick();
+  }
+
+  /// Mirror the video's state onto the fields the UI already watches.
+  void _onVideoTick() {
+    final c = _video;
+    if (c == null) return;
+    final v = c.value;
+    playing = v.isPlaying;
+    position = v.position;
+    if (v.duration > Duration.zero) duration = v.duration;
+    if (v.isCompleted) {
+      // Only advance once per play-through.
+      if (!_completionFired) {
+        _completionFired = true;
+        notifyListeners();
+        _onComplete();
+      }
+      return;
+    }
+    _completionFired = false;
+    notifyListeners();
+  }
+
+  Future<void> _stopVideo() async {
+    final c = _video;
+    _video = null;
+    if (c == null) return;
+    c.removeListener(_onVideoTick);
+    try {
+      await c.pause();
+    } catch (_) {}
+    try {
+      await c.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _stopAudio() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
+  }
+
   Future<void> toggle() async {
     if (currentId == null) return;
+    final c = _video;
+    if (c != null) {
+      final v = c.value;
+      if (v.isPlaying) {
+        await c.pause();
+      } else {
+        if (v.duration > Duration.zero && v.position >= v.duration) {
+          await c.seekTo(Duration.zero);
+        }
+        await c.play();
+      }
+      return;
+    }
     if (_player.playing) {
       await _player.pause();
     } else {
@@ -638,7 +738,14 @@ class MusicService extends ChangeNotifier {
     }
   }
 
-  Future<void> seek(Duration to) => _player.seek(to);
+  Future<void> seek(Duration to) async {
+    final c = _video;
+    if (c != null) {
+      await c.seekTo(to);
+      return;
+    }
+    await _player.seek(to);
+  }
 
   Future<void> next() async {
     final list = tracks;
@@ -660,6 +767,7 @@ class MusicService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _stopVideo();
     _player.dispose();
     _yt?.close();
     super.dispose();
