@@ -56,15 +56,32 @@ intent filter are already in `android/app/src/main/AndroidManifest.xml`.
 
 ## What's in it
 
-**Brief** — ~32 ranked items drawn from **132 sources** across nine categories:
-AI, Dev, Research, News, Video, Sport, Anime and Morocco (plus All). Category
+**Brief** — ~36 ranked items drawn from **151 sources** across ten categories:
+AI, Dev, Research, News, PFE, Video, Sport, Anime, Morocco and All. Category
 chips make it easy to jump straight to your field. Tap any item to see a real
 "What it's about" preview (the article's opening paragraphs, or the video's
 description with a thumbnail) before you decide to open it. Ends with a
 "You're caught up" card — no infinite scroll.
 
+- **PFE & internships** — a dedicated category that sweeps Moroccan job boards
+  (PFE Daba, Rekrute, Emploi.ma, Maroc Emploi, Dreamjob, Indeed, LinkedIn) plus
+  international software / ML / data internships and relevant Reddit threads,
+  all through Google News so it stays plain RSS.
+- **Video** — the one category that ignores freshness. Each channel's recent
+  uploads are ranked by view count, so a genuinely popular older video can beat
+  a dull new one. View counts are shown on the card and in the sheet.
+
 **Trends** — rising repositories (GitHub), trending models (Hugging Face) and
-new papers (arXiv) for the week. Save any of them to your reading list.
+new papers (arXiv) for the week. Every card shows what it is about, and tapping
+one opens the same "What it's about" + AI-summary sheet as the brief (without
+the flashcard action). Save any of them to your reading list.
+
+**Music** — a personal, *offline* library, and deliberately **not** a feed.
+Find a song on YouTube (or YouTube Music), tap **Share** and pick Signal — or
+paste the link on the Music tab. Signal downloads just the audio track to the
+device and plays it back in-app with a full player (seek, next/previous,
+playlist), no connection needed afterwards. Delete a song to reclaim the space.
+See the note on music below before shipping a public build.
 
 **Study**
 - **Flashcards** generated from any item with AI, reviewed with a simplified
@@ -79,7 +96,8 @@ reading (the article body is extracted and cached on device).
 papers explained, a 7-day bar chart and an optional AI summary of your week.
 
 **Share into Signal** — share a link from any app and it lands in your reading
-list.
+list. Share a YouTube link and Signal offers to download the audio into your
+offline Music library instead.
 
 **Time limit** — a daily budget with a lock screen and a "5 more minutes"
 button.
@@ -97,10 +115,11 @@ lib/
   article.dart              readable-text extraction + offline cache
   theme.dart                palette, theme, shared card/button widgets
   widgets.dart              stat boxes, chip row, progress bars, tags
-  screens/                  brief, trends, study, saved, settings, report, item
+  screens/                  brief, trends, study, saved, music, settings, report, item
   services/
     notifications.dart      one daily reminder
     sharing.dart            receive links shared from other apps
+    music.dart              offline library: YouTube → local audio + playback
 ```
 
 Share-to-app on Android is implemented in-house: the `SEND` intent filter is in
@@ -114,7 +133,8 @@ flutter test
 ```
 
 Covers the SM-2 scheduler, model serialisation, feed parsing/cleaning, the
-readable-text extractor, and widget smoke tests for every tab.
+readable-text extractor, YouTube link parsing for the music library, and widget
+smoke tests for every tab.
 
 ## Notes / limitations
 
@@ -127,6 +147,13 @@ readable-text extractor, and widget smoke tests for every tab.
   that refresh.
 - The AI features need a valid NVIDIA key with available credit. Provide one via
   `.env` (or `--dart-define`), or paste it in Settings on first run.
+- **Music downloads.** Music is downloaded from a link you choose, using
+  `youtube_explode_dart` (`just_audio` plays it back). It works offline and the
+  files are yours to delete. Be aware that downloading audio from YouTube is
+  against YouTube's Terms of Service, and the extractor depends on YouTube's
+  internals, so it can break when they change. Use it for personal listening and
+  think twice before shipping it publicly; the rest of the app is unaffected if
+  a download fails.
 
 ## License
 

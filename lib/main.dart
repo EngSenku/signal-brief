@@ -6,10 +6,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/brief.dart';
+import 'screens/music.dart';
 import 'screens/saved.dart';
 import 'screens/settings.dart';
 import 'screens/study.dart';
 import 'screens/trends.dart';
+import 'services/music.dart';
 import 'services/sharing.dart';
 import 'store.dart';
 import 'theme.dart';
@@ -28,7 +30,15 @@ Future<void> main() async {
   ));
   final state = AppState();
   await state.init();
-  runApp(ChangeNotifierProvider.value(value: state, child: const SignalApp()));
+  final music = MusicService();
+  await music.init();
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: state),
+      ChangeNotifierProvider.value(value: music),
+    ],
+    child: const SignalApp(),
+  ));
 }
 
 class SignalApp extends StatelessWidget {
@@ -69,16 +79,66 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
 
   Future<void> _onShared(List<String> texts) async {
     final st = context.read<AppState>();
+    final music = context.read<MusicService>();
+
+    // A YouTube link is more likely a song to keep than an article to read,
+    // so offer to download it into the offline Music library.
+    final yt = <String>[];
+    for (final t in texts) {
+      final u = MusicService.youtubeUrlIn(t);
+      if (u != null && !yt.contains(u)) yt.add(u);
+    }
+    if (yt.isNotEmpty) {
+      final keep = await _askSaveMusic(yt.length);
+      if (!mounted) return;
+      if (keep == true) {
+        setState(() => tab = 4); // the Music tab
+        for (final u in yt) {
+          try {
+            final t = await music.download(u);
+            _snack('Saved “${t.title}” for offline listening.');
+          } catch (e) {
+            _snack(e.toString().replaceFirst('Exception: ', ''));
+          }
+        }
+        return;
+      }
+    }
+
     final n = await st.addShared(texts);
     if (!mounted) return;
     setState(() => tab = 3); // jump to the reading list
+    _snack(n > 0
+        ? 'Added $n ${n == 1 ? 'link' : 'links'} to your reading list.'
+        : 'That link is already in your reading list.');
+  }
+
+  Future<bool?> _askSaveMusic(int count) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: C.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(count > 1 ? 'Save these to Music?' : 'Save this to Music?'),
+          content: const Text(
+              'Signal can download the audio and keep it on this device for '
+              'offline listening. Or save the link to your reading list instead.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Add to reading list')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Download audio',
+                    style: TextStyle(color: C.lime))),
+          ],
+        ),
+      );
+
+  void _snack(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(n > 0
-            ? 'Added $n ${n == 1 ? 'link' : 'links'} to your reading list.'
-            : 'That link is already in your reading list.'),
-      ));
+      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _start() {
@@ -131,11 +191,12 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
               TrendsScreen(),
               StudyScreen(),
               SavedScreen(),
+              MusicScreen(),
               SettingsScreen(),
             ],
           ),
         ),
-        if (st.locked && tab != 4)
+        if (st.locked && tab != 5)
           Positioned.fill(
             child: Container(
               color: C.bg,
@@ -181,6 +242,7 @@ class _NavBar extends StatelessWidget {
     (Icons.trending_up_rounded, 'Trends'),
     (Icons.school_rounded, 'Study'),
     (Icons.bookmark_rounded, 'Saved'),
+    (Icons.music_note_rounded, 'Music'),
     (Icons.tune_rounded, 'You'),
   ];
 
