@@ -89,14 +89,14 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
       if (u != null && !yt.contains(u)) yt.add(u);
     }
     if (yt.isNotEmpty) {
-      final keep = await _askSaveMusic(yt.length);
+      final fmt = await _askSaveMusic(yt.length);
       if (!mounted) return;
-      if (keep == true) {
+      if (fmt != null) {
         setState(() => tab = 4); // the Music tab
         for (final u in yt) {
           try {
-            final t = await music.download(u);
-            _snack('Saved “${t.title}” for offline listening.');
+            final t = await music.download(u, format: fmt);
+            _snack('Saved “${t.title}” for offline use.');
           } catch (e) {
             _snack(e.toString().replaceFirst('Exception: ', ''));
           }
@@ -113,26 +113,32 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         : 'That link is already in your reading list.');
   }
 
-  Future<bool?> _askSaveMusic(int count) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: C.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(count > 1 ? 'Save these to Music?' : 'Save this to Music?'),
-          content: const Text(
-              'Signal can download the audio and keep it on this device for '
-              'offline listening. Or save the link to your reading list instead.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Add to reading list')),
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Download audio',
-                    style: TextStyle(color: C.lime))),
-          ],
-        ),
-      );
+  /// Returns the format to download, or null to just add to the reading list.
+  Future<SaveFormat?> _askSaveMusic(int count) async {
+    final choice = await showDialog<Object>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: C.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(count > 1 ? 'Save $count links?' : 'Save this?'),
+        content: const Text(
+            'Download it to your offline library (Audio or Video), or just '
+            'keep the link in your reading list.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, 'read'),
+              child: const Text('Reading list')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, SaveFormat.video),
+              child: const Text('Video')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, SaveFormat.audio),
+              child: const Text('Audio', style: TextStyle(color: C.lime))),
+        ],
+      ),
+    );
+    return choice is SaveFormat ? choice : null;
+  }
 
   void _snack(String msg) {
     if (!mounted) return;

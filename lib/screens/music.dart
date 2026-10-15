@@ -27,6 +27,7 @@ class MusicScreen extends StatefulWidget {
 class _MusicScreenState extends State<MusicScreen> {
   final _link = TextEditingController();
   String? _err;
+  SaveFormat _format = SaveFormat.audio;
 
   @override
   void dispose() {
@@ -38,9 +39,9 @@ class _MusicScreenState extends State<MusicScreen> {
     final url = MusicService.youtubeUrlIn(input) ?? input.trim();
     setState(() => _err = null);
     try {
-      final t = await m.download(url);
+      final t = await m.download(url, format: _format);
       _link.clear();
-      if (mounted) showSnack(context, 'Saved “${t.title}” for offline listening.');
+      if (mounted) showSnack(context, 'Saved “${t.title}” for offline use.');
     } catch (e) {
       if (mounted) {
         setState(() => _err = e.toString().replaceFirst('Exception: ', ''));
@@ -54,8 +55,8 @@ class _MusicScreenState extends State<MusicScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: C.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Delete this song?'),
-        content: Text('“${t.title}” and its downloaded audio will be removed '
+        title: const Text('Delete this?'),
+        content: Text('“${t.title}” and its downloaded file will be removed '
             'from this device.'),
         actions: [
           TextButton(
@@ -93,12 +94,19 @@ class _MusicScreenState extends State<MusicScreen> {
         // Add a track
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Add a song',
+            const Text('Add from YouTube',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
-            const Text('Paste a YouTube or YouTube Music link.',
+            const Text('Paste a link, pick what to keep, and it lands here.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
+            ChipRow(
+              options: const ['Audio', 'Video'],
+              value: _format == SaveFormat.audio ? 'Audio' : 'Video',
+              onChanged: (v) => setState(() => _format =
+                  v == 'Video' ? SaveFormat.video : SaveFormat.audio),
+            ),
+            const SizedBox(height: 4),
             TextField(
               controller: _link,
               enabled: !m.downloading,
@@ -225,6 +233,10 @@ class _TrackTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            if (t.video) ...[
+              const Icon(Icons.movie_rounded, size: 14, color: C.muted),
+              const SizedBox(width: 6),
+            ],
             Text(_clock(Duration(milliseconds: t.durationMs)),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
             const SizedBox(width: 8),

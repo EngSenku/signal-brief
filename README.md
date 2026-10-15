@@ -77,11 +77,13 @@ one opens the same "What it's about" + AI-summary sheet as the brief (without
 the flashcard action). Save any of them to your reading list.
 
 **Music** — a personal, *offline* library, and deliberately **not** a feed.
-Find a song on YouTube (or YouTube Music), tap **Share** and pick Signal — or
-paste the link on the Music tab. Signal downloads just the audio track to the
-device and plays it back in-app with a full player (seek, next/previous,
-playlist), no connection needed afterwards. Delete a song to reclaim the space.
-See the note on music below before shipping a public build.
+Find a song or video on YouTube (or YouTube Music), tap **Share** and pick
+Signal — or paste the link on the Music tab — then choose **Audio** or **Video**.
+Signal downloads it to the device and plays it back in-app with a full player
+(seek, next/previous, playlist), no connection needed afterwards. Delete an
+item to reclaim the space. Audio is stored as AAC/M4A and video as MP4; YouTube
+serves neither MP3 nor high-resolution muxed video, so those formats would need
+a bundled transcoder (see the note on music below).
 
 **Study**
 - **Flashcards** generated from any item with AI, reviewed with a simplified
@@ -147,13 +149,17 @@ smoke tests for every tab.
   that refresh.
 - The AI features need a valid NVIDIA key with available credit. Provide one via
   `.env` (or `--dart-define`), or paste it in Settings on first run.
-- **Music downloads.** Music is downloaded from a link you choose, using
-  `youtube_explode_dart` (`just_audio` plays it back). It works offline and the
-  files are yours to delete. Be aware that downloading audio from YouTube is
-  against YouTube's Terms of Service, and the extractor depends on YouTube's
-  internals, so it can break when they change. Use it for personal listening and
-  think twice before shipping it publicly; the rest of the app is unaffected if
-  a download fails.
+- **Music downloads.** Items are downloaded from a link you choose, using
+  `youtube_explode_dart`; `just_audio` plays them back (audio plays in-app; a
+  saved video plays its audio track). Media is fetched from YouTube's InnerTube
+  player API only, with the VISIONOS client, and deliberately *without* touching
+  the watch page — YouTube sends watch-page requests to a rate-limit `/sorry/`
+  page far more readily. Metadata comes from the oEmbed endpoint. Even so,
+  downloading from YouTube is against YouTube's Terms of Service, the extractor
+  depends on YouTube's internals, and a busy IP can still be rate-limited; use
+  it for personal listening and think twice before shipping it publicly. If you
+  want true MP3 files or high-resolution MP4, add a transcoder such as
+  `ffmpeg_kit_flutter_new` (note it is GPL and adds a lot of APK size).
 
 ## License
 
