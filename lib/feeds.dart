@@ -439,9 +439,14 @@ const kSources = <Source>[
       about: 'Tech internships and careers in Europe.'),
 ];
 
-/// Fetch every source, but gently. Ordinary feeds run a few at a time;
-/// YouTube gets its own small lane (its RSS returns 404 when hit too fast)
-/// and Reddit goes strictly one-at-a-time so we don't get 429s.
+/// Fetch every source, gently by host group.
+///
+/// Ordinary feeds run in a few parallel lanes. YouTube gets its own wider lane:
+/// its RSS answers are small but it 404s under load, so we keep the gap short
+/// and retry just the misses once. Reddit rate-limits hard, so it stays strictly
+/// one-at-a-time. Crucially the three groups run *concurrently* — the video
+/// lane no longer waits for every other feed to finish (and vice versa), so a
+/// refresh takes as long as the slowest group instead of their sum.
 Future<List<List<Item>>> fetchAllSources(List<Source> sources) async {
   final results = List<List<Item>>.generate(sources.length, (_) => const []);
 
@@ -460,31 +465,45 @@ Future<List<List<Item>>> fetchAllSources(List<Source> sources) async {
   }
 
   // Everything except the rate-limited hosts: a handful of parallel lanes.
-  var cursor = 0;
-  Future<void> lane() async {
-    while (cursor < fast.length) {
-      final index = fast[cursor++];
-      results[index] = await fetchSource(sources[index]);
+  Future<void> runFast() async {
+    var cursor = 0;
+    Future<void> lane() async {
+      while (cursor < fast.length) {
+        final index = fast[cursor++];
+        results[index] = await fetchSource(sources[index]);
+      }
+    }
+
+    await Future.wait(List.generate(8, (_) => lane()));
+  }
+
+  // YouTube: a wider lane so ~40 channels clear quickly, then one quiet retry
+  // for whatever came back empty. Bounded so a hung host cannot hold up the
+  // whole brief.
+  Future<void> runVideo() async {
+    await _fetchGentle(video, 6, sources, results,
+        gap: const Duration(milliseconds: 60));
+    final missed = video.where((i) => results[i].isEmpty).toList();
+    if (missed.isNotEmpty) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      await _fetchGentle(missed, 3, sources, results,
+          gap: const Duration(milliseconds: 250));
     }
   }
 
-  await Future.wait(List.generate(8, (_) => lane()));
-
-  // YouTube throws 404s under load, so fetch it in a small lane and then
-  // quietly retry whatever came back empty, slowly.
-  await _fetchGentle(video, 3, sources, results);
-  final missed = video.where((i) => results[i].isEmpty).toList();
-  if (missed.isNotEmpty) {
-    await Future.delayed(const Duration(milliseconds: 900));
-    await _fetchGentle(missed, 1, sources, results,
-        gap: const Duration(milliseconds: 700));
-  }
-
   // Reddit rate-limits hard: one at a time, with a gap.
-  for (final index in reddit) {
-    results[index] = await fetchSource(sources[index]);
-    await Future.delayed(const Duration(milliseconds: 1800));
+  Future<void> runReddit() async {
+    for (final index in reddit) {
+      results[index] = await fetchSource(sources[index]);
+      await Future.delayed(const Duration(milliseconds: 1800));
+    }
   }
+
+  await Future.wait([
+    runFast(),
+    runReddit(),
+    runVideo().timeout(const Duration(seconds: 30), onTimeout: () {}),
+  ]);
 
   return results;
 }
@@ -516,7 +535,9 @@ Future<List<Item>> fetchSource(Source s) async {
               'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
           'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
         })
-        .timeout(const Duration(seconds: 20));
+        // YouTube's RSS answers fast and 404s fast, so it does not need the
+        // longer budget that slower feeds get.
+        .timeout(Duration(seconds: s.cat == 'Video' ? 12 : 20));
     if (r.statusCode != 200) return [];
     final body = utf8.decode(r.bodyBytes, allowMalformed: true);
     final out = <Item>[];

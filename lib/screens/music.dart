@@ -97,14 +97,16 @@ class _MusicScreenState extends State<MusicScreen> {
             const Text('Add from YouTube',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
             const SizedBox(height: 4),
-            const Text('Paste a link, pick a format, and it downloads here.',
+            const Text(
+                'Paste a link and it saves here. Audio is a .m4a file (same '
+                'quality as an MP3); video is a 360p .mp4.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 12),
             ChipRow(
-              options: const ['MP3', 'MP4'],
-              value: _format == SaveFormat.audio ? 'MP3' : 'MP4',
+              options: const ['Audio', 'Video'],
+              value: _format == SaveFormat.audio ? 'Audio' : 'Video',
               onChanged: (v) => setState(() => _format =
-                  v == 'MP4' ? SaveFormat.video : SaveFormat.audio),
+                  v == 'Video' ? SaveFormat.video : SaveFormat.audio),
             ),
             const SizedBox(height: 4),
             TextField(

@@ -1,10 +1,6 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
@@ -45,8 +41,9 @@ const YoutubeApiClient _visionOs = YoutubeApiClient({
   },
 }, 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
 
-/// Tried in order; `getManifest` merges what each client returns and moves on
-/// when one fails, so this doubles as our fallback chain.
+/// Audio clients, tried in order. VISIONOS leads: it is the most reliable
+/// logged-out client, needs no PO token, and can be asked for streams without
+/// the watch page. `_manifest` picks the first one that answers usefully.
 final List<YoutubeApiClient> _ytClients = <YoutubeApiClient>[
   _visionOs,
   YoutubeApiClient.ios,
@@ -54,6 +51,18 @@ final List<YoutubeApiClient> _ytClients = <YoutubeApiClient>[
   YoutubeApiClient.androidSdkless,
   YoutubeApiClient.tv,
   YoutubeApiClient.android,
+];
+
+/// For a saved 360p video we need a client that returns YouTube's ready-made
+/// *muxed* file; the Android clients do, VISIONOS/ios do not. Ordered so we hit
+/// a working one immediately instead of probing the others first.
+final List<YoutubeApiClient> _videoClients = <YoutubeApiClient>[
+  YoutubeApiClient.androidVr,
+  YoutubeApiClient.androidSdkless,
+  YoutubeApiClient.android,
+  _visionOs,
+  YoutubeApiClient.ios,
+  YoutubeApiClient.tv,
 ];
 
 class Track {
@@ -64,7 +73,7 @@ class Track {
   String filePath;
   String? thumb;
   int durationMs;
-  bool video; // saved as MP4 instead of MP3
+  bool video; // saved as a 360p MP4 instead of an audio (.m4a) file
   DateTime added;
 
   Track({
@@ -107,13 +116,15 @@ class Track {
 /// Your personal, offline library.
 ///
 /// Music is deliberately *not* a feed. You go to YouTube, pick something and
-/// share the link into Signal (or paste it on the Music tab), choose MP3 or
-/// MP4, and the app downloads and converts it on the device. No network needed
-/// afterwards.
+/// share the link into Signal (or paste it on the Music tab), choose audio or
+/// video, and the app saves the media on the device. No network needed after.
+///
+/// Nothing is re-encoded: audio is YouTube's AAC track saved as `.m4a` and
+/// video is YouTube's ready-made 360p MP4 (video and audio in one file). That
+/// keeps downloads small and instant and the app free of a heavy transcoder.
 ///
 /// Extraction avoids the watch page (which YouTube redirects to its /sorry/
-/// rate-limit wall) and uses the VISIONOS InnerTube client. Conversion/muxing
-/// is done by the bundled FFmpeg (`ffmpeg_kit_flutter_new`, GPL).
+/// rate-limit wall) and uses the VISIONOS InnerTube client.
 class MusicService extends ChangeNotifier {
   final _player = AudioPlayer();
   YoutubeExplode? _yt;
@@ -225,7 +236,11 @@ class MusicService extends ChangeNotifier {
     return null;
   }
 
-  /// Download (and convert) the media for a shared/pasted [url].
+  /// Download the media for a shared/pasted [url] into the offline library.
+  ///
+  /// Nothing is re-encoded: audio is YouTube's AAC stream saved as `.m4a`, and
+  /// video is YouTube's ready-made 360p MP4 (video and audio in one file). Both
+  /// are small and save at the network's own speed.
   Future<Track> download(String url, {SaveFormat format = SaveFormat.audio}) async {
     final id = youtubeId(url);
     if (id == null) {
@@ -247,75 +262,28 @@ class MusicService extends ChangeNotifier {
 
     final yt = _youtube;
     final watchUrl = 'https://www.youtube.com/watch?v=$id';
-    final temps = <File>[];
     File? out;
     var durationMs = 0;
+    final video = format == SaveFormat.video;
 
     try {
       // Streams come from the InnerTube player API only. `requireWatchPage:
       // false` keeps us off youtube.com/watch, which YouTube redirects to its
       // /sorry/ rate-limit wall far more aggressively than the API.
-      final manifest =
-          await _manifest(id, video: format == SaveFormat.video);
+      final manifest = await _manifest(id, video: video);
 
-      if (format == SaveFormat.video) {
-        final v = _pickVideo(manifest);
-        final a = _pickAudio(manifest);
-        if (v != null && a != null) {
-          durationMs = _estimateMs(a);
-          final vFile = File('${_dir!.path}/$id.v.${_extOf(v)}');
-          temps.add(vFile);
-          await _fetch(yt, v, vFile, 'Downloading video…');
-
-          final aFile = File('${_dir!.path}/$id.a.${_extOf(a)}');
-          temps.add(aFile);
-          await _fetch(yt, a, aFile, 'Downloading audio…');
-
-          out = File('${_dir!.path}/$id.mp4');
-          await _run(
-            '-y -i "${vFile.path}" -i "${aFile.path}" '
-            '-map 0:v:0 -map 1:a:0 -c copy -movflags +faststart "${out.path}"',
-            'Adding sound…',
-          );
-        } else if (manifest.muxed.isNotEmpty) {
-          // No separate tracks — fall back to YouTube's ready-made file.
-          final mux = manifest.muxed.sortByBitrate().first;
-          out = File('${_dir!.path}/$id.${_extOf(mux)}');
-          await _fetch(yt, mux, out, 'Downloading video…');
-          durationMs = _estimateMs(mux);
-        } else {
-          throw const MusicException('No video stream was available for this video.');
-        }
-      } else {
-        final a = _pickAudio(manifest);
-        if (a == null) {
-          throw const MusicException('No audio stream was available for this video.');
-        }
-        durationMs = _estimateMs(a);
-
-        final src = File('${_dir!.path}/$id.src.${_extOf(a)}');
-        await _fetch(yt, a, src, 'Downloading audio…');
-
-        final mp3 = File('${_dir!.path}/$id.mp3');
-        final ok = await _run(
-          '-y -i "${src.path}" -vn -c:a libmp3lame -b:a 128k "${mp3.path}"',
-          'Converting to MP3…',
-          timeout: Duration(seconds: 90 + (durationMs ~/ 1000)),
-        );
-        if (ok && mp3.existsSync() && mp3.lengthSync() > 0) {
-          out = mp3;
-          try {
-            src.deleteSync();
-          } catch (_) {}
-        } else {
-          // FFmpeg unavailable/failed: keep the original audio so it still plays.
-          final raw = File('${_dir!.path}/$id.${_extOf(a)}');
-          try {
-            src.renameSync(raw.path);
-          } catch (_) {}
-          out = raw.existsSync() ? raw : src;
-        }
+      final StreamInfo? stream =
+          video ? _pickMuxed(manifest) : _pickAudio(manifest);
+      if (stream == null) {
+        throw MusicException(video
+            ? 'No 360p video file was available for this link.'
+            : 'No audio was available for this link.');
       }
+      durationMs = _estimateMs(stream);
+
+      out = File('${_dir!.path}/$id${musicFileExtension(video: video)}');
+      await _fetch(
+          yt, stream, out, video ? 'Downloading video…' : 'Downloading audio…');
 
       // Metadata (title, author, thumbnail) without the watch page.
       final meta = await _oembed(watchUrl);
@@ -331,7 +299,7 @@ class MusicService extends ChangeNotifier {
         filePath: out.path,
         thumb: thumb.isNotEmpty ? thumb : 'https://i.ytimg.com/vi/$id/hqdefault.jpg',
         durationMs: durationMs,
-        video: format == SaveFormat.video,
+        video: video,
       );
       tracks.insert(0, t);
       await _persist();
@@ -346,11 +314,6 @@ class MusicService extends ChangeNotifier {
       lastError = msg;
       throw MusicException(msg);
     } finally {
-      for (final f in tempFilesForCleanup(temps, out)) {
-        try {
-          f.deleteSync();
-        } catch (_) {}
-      }
       downloading = false;
       downloadingLabel = null;
       downloadProgress = null;
@@ -366,15 +329,16 @@ class MusicService extends ChangeNotifier {
   Future<StreamManifest> _manifest(String id, {required bool video}) async {
     StreamManifest? fallback;
     Object? last;
-    for (final client in _ytClients) {
+    for (final client in video ? _videoClients : _ytClients) {
       try {
         final m = await _youtube.videos.streamsClient
             .getManifest(id, ytClients: [client], requireWatchPage: false)
             .timeout(const Duration(seconds: 25));
-        final hasAudio = m.audioOnly.isNotEmpty;
-        final hasVideo = m.videoOnly.any((s) => s.container.name == 'mp4');
-        if (video ? (hasVideo && hasAudio) : hasAudio) return m;
-        if (hasAudio || m.muxed.isNotEmpty) fallback ??= m;
+        // Video is saved as YouTube's ready-made 360p file, so we need a client
+        // that returns a muxed stream; for audio the audio track is enough.
+        final usable = video ? m.muxed.isNotEmpty : m.audioOnly.isNotEmpty;
+        if (usable) return m;
+        if (m.audioOnly.isNotEmpty || m.muxed.isNotEmpty) fallback ??= m;
       } catch (e) {
         last = e;
       }
@@ -418,49 +382,17 @@ class MusicService extends ChangeNotifier {
     }
   }
 
-  /// Runs one FFmpeg command. Returns whether it succeeded.
+  /// The smallest muxed (progressive) MP4 track, capped at 360p.
   ///
-  /// [timeout] guards against a conversion that stalls on a slow device: rather
-  /// than leaving the user watching the bar forever, we cancel it and let the
-  /// caller fall back to the raw stream.
-  Future<bool> _run(String command, String label, {Duration? timeout}) async {
-    downloadingLabel = label;
-    downloadProgress = null;
-    notifyListeners();
-    try {
-      final done = Completer<void>();
-      final session = await FFmpegKit.executeAsync(command, (s) {
-        if (!done.isCompleted) done.complete();
-      });
-      try {
-        await done.future.timeout(timeout ?? const Duration(minutes: 10));
-      } on TimeoutException {
-        await FFmpegKit.cancel(session.getSessionId());
-        return false;
-      }
-      final rc = await session.getReturnCode();
-      final ok = ReturnCode.isSuccess(rc);
-      await FFmpegKitConfig.clearSessions();
-      return ok;
-    } catch (_) {
-      try {
-        await FFmpegKit.cancel();
-      } catch (_) {}
-      return false;
-    }
-  }
-
-  /// The best MP4 video-only track at or below 1080p.
-  ///
-  /// YouTube offers 2160p/4320p for many videos, and those files are many times
-  /// larger than a throttled download can pull in reasonable time (a 4K music
-  /// video is ~240 MB). Capping at 1080p keeps it quick and still looks good.
-  VideoOnlyStreamInfo? _pickVideo(StreamManifest m) {
-    final mp4 = m.videoOnly.where((s) => s.container.name == 'mp4').toList();
+  /// YouTube serves this video *and* audio in one file, so saving it needs no
+  /// muxing and no transcoder. 360p (itag 18, ~12 MB for a song-length video)
+  /// keeps the download small and quick.
+  MuxedStreamInfo? _pickMuxed(StreamManifest m) {
+    final mp4 = m.muxed.where((s) => s.container.name == 'mp4').toList();
     if (mp4.isEmpty) return null;
     mp4.sort((a, b) => a.videoResolution.compareTo(b.videoResolution));
-    final hd = mp4.where((s) => s.videoResolution.height <= 1080).toList();
-    return hd.isNotEmpty ? hd.last : mp4.first;
+    final sd = mp4.where((s) => s.videoResolution.height <= 360).toList();
+    return sd.isNotEmpty ? sd.last : mp4.first;
   }
 
   /// The best audio-only track, preferring AAC (MP4) for compatibility.
@@ -471,13 +403,6 @@ class MusicService extends ChangeNotifier {
     if (pool.isEmpty) return null;
     pool.sort((a, b) => a.bitrate.bitsPerSecond.compareTo(b.bitrate.bitsPerSecond));
     return pool.last;
-  }
-
-  /// The on-disk extension for a stream's container.
-  String _extOf(StreamInfo s) {
-    final c = s.container.name;
-    if (s is AudioStreamInfo) return c == 'mp4' ? 'm4a' : 'webm';
-    return c; // 'mp4' or 'webm' for video/muxed
   }
 
   /// Approximate length from stream size ÷ bitrate.
@@ -576,8 +501,6 @@ class MusicService extends ChangeNotifier {
   }
 }
 
-/// Temp files that should be removed once a download finishes, never the file
-/// we are keeping.
+/// The extension used for a saved item: video is `.mp4`, audio is `.m4a`.
 @visibleForTesting
-List<File> tempFilesForCleanup(List<File> temps, File? keep) =>
-    temps.where((f) => f.path != keep?.path).toList();
+String musicFileExtension({required bool video}) => video ? '.mp4' : '.m4a';

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:signal_brief/screens/item.dart' show compactCount;
 import 'package:signal_brief/services/music.dart';
@@ -54,17 +52,10 @@ void main() {
     expect(compactCount(2300000), '2.3M');
   });
 
-  group('temp file cleanup', () {
-    test('keeps the saved file and drops the intermediates', () {
-      final keep = File('/tmp/keep.mp3');
-      final other = File('/tmp/other.m4a');
-      expect(tempFilesForCleanup([keep, other], keep), [other]);
-    });
-
-    test('cleans everything when nothing is kept', () {
-      final a = File('/tmp/a');
-      final b = File('/tmp/b');
-      expect(tempFilesForCleanup([a, b], null), [a, b]);
+  group('saved file format', () {
+    test('audio saves as m4a, video as mp4', () {
+      expect(musicFileExtension(video: false), '.m4a');
+      expect(musicFileExtension(video: true), '.mp4');
     });
   });
 }

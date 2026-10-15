@@ -122,18 +122,18 @@ class _ShellState extends State<Shell> with WidgetsBindingObserver {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(count > 1 ? 'Save $count links?' : 'Save this?'),
         content: const Text(
-            'Download it to your offline library as MP3 (audio) or MP4 '
-            '(video), or just keep the link in your reading list.'),
+            'Download it to your offline library as audio (.m4a) or video '
+            '(360p MP4), or just keep the link in your reading list.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, 'read'),
               child: const Text('Reading list')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, SaveFormat.video),
-              child: const Text('MP4')),
+              child: const Text('Video')),
           TextButton(
               onPressed: () => Navigator.pop(ctx, SaveFormat.audio),
-              child: const Text('MP3', style: TextStyle(color: C.lime))),
+              child: const Text('Audio', style: TextStyle(color: C.lime))),
         ],
       ),
     );
