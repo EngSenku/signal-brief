@@ -18,6 +18,17 @@ class MusicException implements Exception {
   String toString() => message;
 }
 
+/// How long to wait for another byte before calling a transfer stalled.
+const Duration _stallAfter = Duration(seconds: 15);
+
+/// How many times a stalled transfer is retried before we give up.
+const int _fetchAttempts = 3;
+
+/// YouTube accepted the request but stopped sending data.
+class _StalledException implements Exception {
+  const _StalledException();
+}
+
 /// The VISIONOS InnerTube client (the one yt-dlp uses): currently the most
 /// reliable logged-out client. It needs no PO token and no JavaScript
 /// challenge, and — unlike the default clients — it can be asked for streams
@@ -284,6 +295,9 @@ class MusicService extends ChangeNotifier {
       out = File('${_dir!.path}/$id${musicFileExtension(video: video)}');
       await _fetch(
           yt, stream, out, video ? 'Downloading video…' : 'Downloading audio…');
+      if (out.lengthSync() == 0) {
+        throw const MusicException('The download came back empty. Try again.');
+      }
 
       // Metadata (title, author, thumbnail) without the watch page.
       final meta = await _oembed(watchUrl);
@@ -348,12 +362,42 @@ class MusicService extends ChangeNotifier {
         last == null ? 'Could not read this video.' : _friendly(last));
   }
 
-  /// Streams a [stream] to [dest], reporting progress and how much has arrived.
+  /// Streams [stream] to [dest], reporting progress, speed and how much arrived.
+  ///
+  /// YouTube's media servers sometimes accept a range request and then simply
+  /// stop sending — a leftover of its bitrate throttling. That used to leave the
+  /// bar frozen at 0 % forever. So we watch for a dry spell, tear the request
+  /// down and start again on a fresh connection, a few times before giving up
+  /// with an honest message.
   Future<void> _fetch(
+      YoutubeExplode yt, StreamInfo stream, File dest, String label) async {
+    for (var attempt = 1;; attempt++) {
+      if (attempt > 1) {
+        downloadingLabel = '$label  (no data — retrying…)';
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 700));
+      }
+      try {
+        await _pipe(yt, stream, dest, label);
+        return;
+      } on _StalledException {
+        if (attempt >= _fetchAttempts) {
+          throw const MusicException(
+              'YouTube stopped sending the file. Check your connection, then '
+              'try again.');
+        }
+      }
+    }
+  }
+
+  /// One pass over the byte stream, writing to [dest].
+  Future<void> _pipe(
       YoutubeExplode yt, StreamInfo stream, File dest, String label) async {
     final total = stream.size.totalBytes;
     var received = 0;
     var lastTick = 0;
+    var lastBytes = 0;
+    var lastAt = 0;
     final sw = Stopwatch()..start();
     downloadingLabel = label;
     downloadProgress = total > 0 ? 0 : null;
@@ -361,25 +405,58 @@ class MusicService extends ChangeNotifier {
 
     final sink = dest.openWrite();
     try {
-      await for (final chunk in yt.videos.streamsClient.get(stream)) {
+      final bytes = yt.videos.streamsClient.get(stream).timeout(
+        _stallAfter,
+        onTimeout: (sink) {
+          sink.addError(const _StalledException());
+          sink.close();
+        },
+      );
+      await for (final chunk in bytes) {
         sink.add(chunk);
         received += chunk.length;
         final ms = sw.elapsedMilliseconds;
         // Refresh a few times a second: keeps the UI smooth and shows the
-        // transfer is moving (with the MB count) on a slow connection.
+        // transfer is moving — with the MB count, the live speed and an ETA —
+        // even on a slow connection.
         if (ms - lastTick >= 350) {
+          final bps = ms - lastAt > 0
+              ? (received - lastBytes) * 1000 / (ms - lastAt)
+              : 0.0;
           lastTick = ms;
+          lastBytes = received;
+          lastAt = ms;
           downloadProgress = total > 0 ? received / total : null;
-          final mb = (received / 1e6).toStringAsFixed(1);
-          downloadingLabel = total > 0
-              ? '$label  $mb / ${(total / 1e6).toStringAsFixed(1)} MB'
-              : '$label  $mb MB';
+          downloadingLabel = _progressLabel(label, received, total, bps);
           notifyListeners();
         }
       }
     } finally {
       await sink.close();
     }
+
+    if (received == 0) throw const _StalledException();
+  }
+
+  /// "Downloading audio…  3.2 / 18.4 MB · 145 KB/s · ~2 min".
+  String _progressLabel(String label, int received, int total, double bytesPerSec) {
+    final buf = StringBuffer(label)
+      ..write('  ${(received / 1e6).toStringAsFixed(1)}');
+    buf.write(total > 0
+        ? ' / ${(total / 1e6).toStringAsFixed(1)} MB'
+        : ' MB');
+    if (bytesPerSec <= 0) return buf.toString();
+
+    buf.write(' · ${(bytesPerSec / 1024).round()} KB/s');
+    final left = total > 0 ? (total - received) / bytesPerSec : 0.0;
+    if (left > 0) {
+      buf.write(left < 60
+          ? ' · ~${left.ceil()}s'
+          : left < 3600
+              ? ' · ~${(left / 60).ceil()} min'
+              : ' · ~${(left / 3600).ceil()} h');
+    }
+    return buf.toString();
   }
 
   /// The smallest muxed (progressive) MP4 track, capped at 360p.
@@ -396,13 +473,14 @@ class MusicService extends ChangeNotifier {
   }
 
   /// The best audio-only track, preferring AAC (MP4) for compatibility.
+  ///
+  /// `withHighestBitrate` also filters to the *default* audio track, so a video
+  /// with several dubs does not hand us the wrong language.
   AudioOnlyStreamInfo? _pickAudio(StreamManifest m) {
     final mp4 = m.audioOnly.where((s) => s.container.name == 'mp4').toList();
+    if (mp4.isNotEmpty) return mp4.withHighestBitrate();
     final webm = m.audioOnly.where((s) => s.container.name == 'webm').toList();
-    final pool = mp4.isNotEmpty ? mp4 : webm;
-    if (pool.isEmpty) return null;
-    pool.sort((a, b) => a.bitrate.bitsPerSecond.compareTo(b.bitrate.bitsPerSecond));
-    return pool.last;
+    return webm.isEmpty ? null : webm.withHighestBitrate();
   }
 
   /// Approximate length from stream size ÷ bitrate.
