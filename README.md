@@ -162,6 +162,13 @@ smoke tests for every tab.
   downloading from YouTube is against YouTube's Terms of Service, the extractor
   depends on YouTube's internals, and a busy IP can still be rate-limited; use
   it for personal listening and think twice before shipping it publicly.
+- **Download speed.** YouTube throttles these media URLs to roughly 1 Mbit/s
+  (the same no matter which client asks), so the wait scales with file size.
+  Signal therefore stops at the first working InnerTube client instead of
+  querying all of them, caps MP4 at **1080p** — 4K streams are several times
+  larger — and writes MP3 at 128 kbps. The progress line shows the megabytes
+  received so a slow link is visibly moving, and an FFmpeg conversion that
+  stalls is cancelled instead of hanging forever.
 - **MP3 / MP4 and the license split.** True MP3 and up to 1080p MP4 are produced
   by bundling `ffmpeg_kit_flutter_new` (full, GPL). The app source in this repo
   is MIT, but the **shipped binaries bundle GPL ffmpeg** — which adds a lot of

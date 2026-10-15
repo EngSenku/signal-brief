@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -254,8 +255,8 @@ class MusicService extends ChangeNotifier {
       // Streams come from the InnerTube player API only. `requireWatchPage:
       // false` keeps us off youtube.com/watch, which YouTube redirects to its
       // /sorry/ rate-limit wall far more aggressively than the API.
-      final manifest = await yt.videos.streamsClient
-          .getManifest(id, ytClients: _ytClients, requireWatchPage: false);
+      final manifest =
+          await _manifest(id, video: format == SaveFormat.video);
 
       if (format == SaveFormat.video) {
         final v = _pickVideo(manifest);
@@ -297,8 +298,9 @@ class MusicService extends ChangeNotifier {
 
         final mp3 = File('${_dir!.path}/$id.mp3');
         final ok = await _run(
-          '-y -i "${src.path}" -vn -c:a libmp3lame -q:a 2 "${mp3.path}"',
+          '-y -i "${src.path}" -vn -c:a libmp3lame -b:a 128k "${mp3.path}"',
           'Converting to MP3…',
+          timeout: Duration(seconds: 90 + (durationMs ~/ 1000)),
         );
         if (ok && mp3.existsSync() && mp3.lengthSync() > 0) {
           out = mp3;
@@ -356,22 +358,58 @@ class MusicService extends ChangeNotifier {
     }
   }
 
-  /// Streams a [stream] to [dest], reporting progress.
+  /// The stream manifest for [id], obtained with a single InnerTube client.
+  ///
+  /// Handing *every* client to `getManifest` makes the library query all of
+  /// them (a player request plus a HEAD each), which is slow on a mobile
+  /// connection. We stop at the first client that gives us what we need.
+  Future<StreamManifest> _manifest(String id, {required bool video}) async {
+    StreamManifest? fallback;
+    Object? last;
+    for (final client in _ytClients) {
+      try {
+        final m = await _youtube.videos.streamsClient
+            .getManifest(id, ytClients: [client], requireWatchPage: false)
+            .timeout(const Duration(seconds: 25));
+        final hasAudio = m.audioOnly.isNotEmpty;
+        final hasVideo = m.videoOnly.any((s) => s.container.name == 'mp4');
+        if (video ? (hasVideo && hasAudio) : hasAudio) return m;
+        if (hasAudio || m.muxed.isNotEmpty) fallback ??= m;
+      } catch (e) {
+        last = e;
+      }
+    }
+    if (fallback != null) return fallback;
+    throw MusicException(
+        last == null ? 'Could not read this video.' : _friendly(last));
+  }
+
+  /// Streams a [stream] to [dest], reporting progress and how much has arrived.
   Future<void> _fetch(
       YoutubeExplode yt, StreamInfo stream, File dest, String label) async {
-    downloadingLabel = label;
-    downloadProgress = null;
-    notifyListeners();
-
     final total = stream.size.totalBytes;
     var received = 0;
+    var lastTick = 0;
+    final sw = Stopwatch()..start();
+    downloadingLabel = label;
+    downloadProgress = total > 0 ? 0 : null;
+    notifyListeners();
+
     final sink = dest.openWrite();
     try {
       await for (final chunk in yt.videos.streamsClient.get(stream)) {
         sink.add(chunk);
         received += chunk.length;
-        if (total > 0) {
-          downloadProgress = received / total;
+        final ms = sw.elapsedMilliseconds;
+        // Refresh a few times a second: keeps the UI smooth and shows the
+        // transfer is moving (with the MB count) on a slow connection.
+        if (ms - lastTick >= 350) {
+          lastTick = ms;
+          downloadProgress = total > 0 ? received / total : null;
+          final mb = (received / 1e6).toStringAsFixed(1);
+          downloadingLabel = total > 0
+              ? '$label  $mb / ${(total / 1e6).toStringAsFixed(1)} MB'
+              : '$label  $mb MB';
           notifyListeners();
         }
       }
@@ -381,27 +419,48 @@ class MusicService extends ChangeNotifier {
   }
 
   /// Runs one FFmpeg command. Returns whether it succeeded.
-  Future<bool> _run(String command, String label) async {
+  ///
+  /// [timeout] guards against a conversion that stalls on a slow device: rather
+  /// than leaving the user watching the bar forever, we cancel it and let the
+  /// caller fall back to the raw stream.
+  Future<bool> _run(String command, String label, {Duration? timeout}) async {
     downloadingLabel = label;
     downloadProgress = null;
     notifyListeners();
     try {
-      final session = await FFmpegKit.execute(command);
+      final done = Completer<void>();
+      final session = await FFmpegKit.executeAsync(command, (s) {
+        if (!done.isCompleted) done.complete();
+      });
+      try {
+        await done.future.timeout(timeout ?? const Duration(minutes: 10));
+      } on TimeoutException {
+        await FFmpegKit.cancel(session.getSessionId());
+        return false;
+      }
       final rc = await session.getReturnCode();
       final ok = ReturnCode.isSuccess(rc);
       await FFmpegKitConfig.clearSessions();
       return ok;
     } catch (_) {
+      try {
+        await FFmpegKit.cancel();
+      } catch (_) {}
       return false;
     }
   }
 
-  /// The highest-resolution MP4 video-only track (H.264 copies cleanly into MP4).
+  /// The best MP4 video-only track at or below 1080p.
+  ///
+  /// YouTube offers 2160p/4320p for many videos, and those files are many times
+  /// larger than a throttled download can pull in reasonable time (a 4K music
+  /// video is ~240 MB). Capping at 1080p keeps it quick and still looks good.
   VideoOnlyStreamInfo? _pickVideo(StreamManifest m) {
     final mp4 = m.videoOnly.where((s) => s.container.name == 'mp4').toList();
     if (mp4.isEmpty) return null;
     mp4.sort((a, b) => a.videoResolution.compareTo(b.videoResolution));
-    return mp4.last;
+    final hd = mp4.where((s) => s.videoResolution.height <= 1080).toList();
+    return hd.isNotEmpty ? hd.last : mp4.first;
   }
 
   /// The best audio-only track, preferring AAC (MP4) for compatibility.
