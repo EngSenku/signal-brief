@@ -13,6 +13,8 @@ you switch AI on.
 Every category ends. There is no infinite scroll and no algorithmic next-up, and
 you can set a daily time limit that locks the app when it runs out.
 
+This is a personal project, not a product. Clone it and run it for yourself.
+
 ## Run it
 
 ```bash
@@ -48,48 +50,38 @@ and desktop folders are there but untested.
 4. Optional: tune **boost topics**, **muted words** and **sources**.
 
 > If you put a key in `.env` and ship the APK, that key is inside the APK and can
-> be extracted. Treat it as public and rotate it if you share the build. The
-> repository itself never contains it.
+> be extracted. Rotate it if you share the build. The repo never contains it.
 
-> Reasoning models such as Nemotron think before they answer, which used to make
-> summaries come back too long or cut off. Signal asks the model to skip its
-> hidden reasoning (`enable_thinking: false`), retries with a larger budget only
-> if needed, and never echoes chain-of-thought into the result.
+> Reasoning models (Nemotron and friends) think before they answer, which used to
+> make summaries too long or cut off. Signal asks them to skip hidden reasoning
+> (`enable_thinking: false`), retries only if needed, and never echoes
+> chain-of-thought into the result.
 
 ## What's in it
 
-**Brief.** Up to 20 items per category from 144 sources, across AI, Dev,
-Research, News, Video, Sport, Anime and PFE, plus an All view. Tapping an item
-shows a real "What it's about" preview first: the article's opening paragraphs,
-or a video's description and thumbnail. The list ends with a "You're caught up"
-card.
+**Brief.** Up to 20 items per category from 144 sources: AI, Dev, Research,
+News, Video, Sport, Anime, PFE, plus an All view. Tap an item for a real
+"What it's about" preview before you open it. The list ends with a "You're
+caught up" card.
 
-- **PFE & internships** is the last chip and the only uncapped one. It sweeps
-  Moroccan job boards (PFE Daba, Rekrute, Emploi.ma, Maroc Emploi, Dreamjob,
-  Indeed, LinkedIn), plus international software, ML and data internships and
-  relevant Reddit threads, all through Google News so it stays plain RSS.
-- **Video** is the one category that ignores freshness. Each channel's recent
-  uploads are ranked by view count, so a genuinely popular older video can beat a
-  dull new one. View counts show on the card and in the sheet.
+- **PFE & internships.** The last chip and the only uncapped one. Moroccan job
+  boards (PFE Daba, Rekrute, Emploi.ma, Maroc Emploi, Dreamjob, Indeed, LinkedIn)
+  plus international software, ML and data internships and Reddit threads, all
+  through Google News.
+- **Video.** The one category that ignores freshness: recent uploads ranked by
+  view count, so an older popular video can beat a dull new one.
 
-**Trends.** Rising repositories from GitHub, trending models from Hugging Face
-and new papers from arXiv, for the week. Tapping a card opens the same
-"What it's about" and AI-summary sheet as the brief, minus the flashcard action.
-Save any of them to your reading list.
+**Trends.** Weekly rising repos (GitHub), trending models (Hugging Face) and new
+papers (arXiv). Tapping a card opens the same preview and AI summary as the
+brief. Save any of them to your reading list.
 
-**Media.** A personal offline library, and deliberately not a feed. It has two
-halves, **Music** and **Video**. Find a song or a video on YouTube (or YouTube
-Music), tap **Share** and pick Signal, or paste the link on the Media tab. Signal
-saves it on the device and plays it back in-app with a full player (seek,
-next/previous, playlist), no connection needed afterwards. A saved clip is a real
-video: tapping it opens a full-screen player with picture and sound, and it sits
-in the Video half with a movie glyph so it never reads as a song. Delete an item
-to reclaim the space.
+**Media.** A personal offline library, not a feed, in two halves: **Music** and
+**Video**. Share a YouTube link or paste it here and it saves to the device, then
+plays offline. A saved clip opens full-screen with picture and sound. Delete an
+item to reclaim the space.
 
-Downloads are not re-encoded, so they run as fast as the network allows.
-**Audio** saves YouTube's own AAC track as a `.m4a`, about 3 MB for a song.
-**Video** saves YouTube's ready-made 360p MP4, with video and audio in one file,
-about 12 MB. No transcode step, and no transcoder bundled into the APK.
+Nothing is re-encoded: audio is YouTube's AAC track as `.m4a` (about 3 MB a
+song), video is its ready-made 360p MP4 (about 12 MB). No transcoder in the APK.
 
 **Study.**
 
@@ -98,15 +90,14 @@ about 12 MB. No transcode step, and no transcoder bundled into the APK.
 - **Paper of the week**, with a plain-language "In plain terms" explanation.
 - **Learning goals** with progress tracking and a reading-day streak.
 
-**Reading list.** Saved items with your own notes and tags, search, and offline
-reading: the article body is extracted and cached on device.
+**Reading list.** Saved items with notes, tags and search. Articles are extracted
+and cached for offline reading.
 
 **Weekly report.** What you read, your top topics and sources, cards reviewed,
-papers explained, a 7-day bar chart, and an optional AI summary of your week.
+papers explained, a 7-day bar chart, and an optional AI summary.
 
 **Share into Signal.** Share a link from any app and it lands in your reading
-list. Share a YouTube link and Signal offers to keep it in the Media library as
-audio or video instead.
+list. A YouTube link is offered to the Media library instead.
 
 **Time limit.** A daily budget with a lock screen and a "5 more minutes" button.
 
@@ -130,9 +121,9 @@ lib/
     music.dart              offline library: YouTube to local audio/video + playback
 ```
 
-Share-to-app on Android is done in-house: the `SEND` intent filter lives in
-`AndroidManifest.xml`, and `MainActivity.kt` forwards the text to Dart over the
-`signal/share` method channel. No third-party plugin to keep version-aligned.
+Share-to-app on Android is done in-house: a `SEND` intent filter in
+`AndroidManifest.xml`, forwarded to Dart by `MainActivity.kt` over the
+`signal/share` channel. No third-party plugin.
 
 ## Tests
 
@@ -140,52 +131,38 @@ Share-to-app on Android is done in-house: the `SEND` intent filter lives in
 flutter test
 ```
 
-46 tests: the SM-2 scheduler, model serialisation, feed parsing and cleaning, the
-readable-text extractor, YouTube link parsing, and widget tests for every tab
-including the Media page.
+46 tests: the SM-2 scheduler, model serialisation, feed parsing, the
+readable-text extractor, YouTube link parsing, and a widget test per tab.
 
 ## Notes and limitations
 
-- **iOS share-to-app** needs a Share Extension target added in Xcode. The Android
-  path works out of the box; iOS is not wired up.
-- **Feeds are best-effort.** The three host groups (ordinary feeds, YouTube,
-  Reddit) are fetched concurrently, so a refresh takes as long as the slowest
-  group instead of their sum. Reddit rate-limits aggressively, so those sources
-  are fetched one at a time with a browser-like user agent; YouTube gets a wider
-  lane (short gap, a single retry for the misses, a 30s cap). Any source that
-  still fails is skipped on that refresh.
-- **The AI features** need a valid NVIDIA key with available credit, from `.env`,
-  `--dart-define`, or the Settings screen.
-- **Media downloads.** Items are downloaded from a link you choose, using
-  `youtube_explode_dart`. Playback is split by what was saved: songs go through
-  `just_audio`, a saved clip goes through `video_player` so its picture is
-  actually shown. The two never play at once; whichever item is current owns
-  playback, and the audio listeners stand down while a clip is loaded. Media is
-  fetched from YouTube's InnerTube player API only, deliberately without touching
-  the watch page, because YouTube sends watch-page requests to a rate-limit
-  `/sorry/` page far more readily. Metadata comes from the oEmbed endpoint.
-  Nothing is transcoded, so the app ships no media codecs and stays small:
-  `video_player` adds only about 0.3 MB, because `just_audio` already bundles the
-  same ExoPlayer/Media3 stack.
-- **Why the VISIONOS client.** YouTube now asks most logged-out clients for a
-  "PO token". A client without one still answers with an audio URL, but that URL
-  only ever serves the **first megabyte** of the file and returns `403` past it,
-  which is indistinguishable from a download stuck at 0%. The **VISIONOS** client
-  is not asked for a PO token, but it needs the anonymous `visitorData` value
-  that `youtube_explode_dart` only sends for its `IOS` client. Signal fetches that
-  value once per run and caches it, which is what makes the audio URL complete.
-  Video still comes from an Android client, the only kind that offers YouTube's
-  ready-made muxed 360p file. If no client offers more than that 1 MB preview,
-  Signal says so rather than pretending to download.
-- **Download speed.** YouTube throttles these media URLs, so the wait scales with
-  file size. That is why Signal keeps the media small (about 3 MB audio, 360p
-  video) instead of transcoding or grabbing 4K. It stops at the first working
-  InnerTube client instead of querying all of them, tears the request down and
-  retries if the server goes quiet for 15s, and the progress line shows megabytes
-  received with live speed and ETA so a slow link is visibly moving.
-- Downloading from YouTube is against YouTube's Terms of Service, and the
-  extractor depends on YouTube's internals. A busy IP can still get rate-limited.
-  Use it for personal listening, and think twice before shipping it publicly.
+- **iOS share-to-app** needs a Share Extension target added in Xcode. Android
+  works out of the box.
+- **Feeds are best-effort.** Ordinary feeds, YouTube and Reddit are fetched
+  concurrently, so a refresh takes as long as the slowest group. Reddit
+  rate-limits hard, so it goes one source at a time; YouTube gets a wider lane. A
+  source that fails is skipped for that refresh.
+- **The AI features** need a valid NVIDIA key with credit, from `.env`,
+  `--dart-define`, or Settings.
+- **Media downloads** use `youtube_explode_dart`. Songs play through
+  `just_audio`; a saved clip goes through `video_player` so the picture shows.
+  Only one of the two ever plays. Media comes from the InnerTube player API, never
+  the watch page, and metadata from oEmbed. Nothing is transcoded, and
+  `video_player` adds only about 0.3 MB.
+- **Why the VISIONOS client.** YouTube now wants a "PO token" from logged-out
+  clients. Without one it still returns an audio URL, but that URL stops at 1 MB
+  with a `403`, which looks like a download stuck at 0%. VISIONOS is not asked for
+  a token, but needs the anonymous `visitorData` value that
+  `youtube_explode_dart` only sends for `IOS`. Signal fetches that once per run
+  and caches it. Video still needs an Android client, since only those offer
+  YouTube's ready-made 360p MP4.
+- **Download speed** depends on YouTube's throttling, which is why Signal keeps
+  media small instead of transcoding or grabbing 4K. It uses the first working
+  client, retries if the server goes quiet for 15s, and shows live speed and ETA.
+- **For personal use, not for shipping.** Cloning this and running it yourself is
+  fine, that is what it is for. Downloading from YouTube does break YouTube's
+  Terms of Service, and the extractor depends on YouTube's internals, so please
+  don't publish it to a store or run it as a service for others.
 
 ## License
 
