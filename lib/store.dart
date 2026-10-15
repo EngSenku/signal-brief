@@ -15,8 +15,7 @@ import 'services/notifications.dart';
 import 'study.dart';
 
 const kCats = [
-  'All', 'AI', 'Dev', 'Research', 'News', 'PFE', 'Video', 'Sport', 'Anime',
-  'Morocco',
+  'All', 'AI', 'Dev', 'Research', 'News', 'Video', 'Sport', 'Anime', 'PFE',
 ];
 
 class AppState extends ChangeNotifier {
@@ -281,8 +280,9 @@ class AppState extends ChangeNotifier {
           scored.add(it);
         }
         scored.sort((a, b) => b.score.compareTo(a.score));
-        // Videos get a wider net so the most-watched recent upload wins.
-        final cap = isVideo ? max(s.cap, 3) : s.cap;
+        // Pull a generous slice from every source so each category can reach
+        // its 20-item target; the per-category quota trims it afterwards.
+        final cap = max(s.cap, 10);
         for (final it in scored.take(cap)) {
           if (seen.contains(it.url) || seen.contains(it.title.toLowerCase())) continue;
           seen..add(it.url)..add(it.title.toLowerCase());
@@ -302,11 +302,11 @@ class AppState extends ChangeNotifier {
         for (final it in picked) {
           (byCat[it.category] ??= <Item>[]).add(it);
         }
+        // 20 items per category; PFE pulls everything we found.
         const quota = <String, int>{
-          'AI': 8, 'Dev': 5, 'Research': 4, 'News': 5, 'PFE': 4,
-          'Video': 4, 'Morocco': 3, 'Sport': 2, 'Anime': 2,
+          'AI': 20, 'Dev': 20, 'Research': 20, 'News': 20,
+          'Video': 20, 'Sport': 20, 'Anime': 20, 'PFE': 1 << 20,
         };
-        const total = 36;
         final chosen = <Item>[];
         final used = <String>{};
         for (final e in quota.entries) {
@@ -314,10 +314,6 @@ class AppState extends ChangeNotifier {
           for (var k = 0; k < e.value && k < list.length; k++) {
             if (used.add(list[k].url)) chosen.add(list[k]);
           }
-        }
-        for (final it in picked) {
-          if (chosen.length >= total) break;
-          if (used.add(it.url)) chosen.add(it);
         }
         chosen.sort((a, b) => b.score.compareTo(a.score));
 

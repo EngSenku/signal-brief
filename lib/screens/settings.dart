@@ -263,7 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       (groups[s.cat] ??= <Source>[]).add(s);
     }
     const order = [
-      'AI', 'Dev', 'Research', 'News', 'PFE', 'Video', 'Sport', 'Anime', 'Morocco',
+      'AI', 'Dev', 'Research', 'News', 'Video', 'Sport', 'Anime', 'PFE',
     ];
     final entries = groups.entries.toList()
       ..sort((a, b) {

@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
@@ -41,9 +44,8 @@ const YoutubeApiClient _visionOs = YoutubeApiClient({
   },
 }, 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
 
-/// Clients tried in order. `getManifest` collects the streams from each client
-/// that succeeds and only gives up once they all fail, so this doubles as the
-/// fallback chain: the reliable VISIONOS client first, then others.
+/// Tried in order; `getManifest` merges what each client returns and moves on
+/// when one fails, so this doubles as our fallback chain.
 final List<YoutubeApiClient> _ytClients = <YoutubeApiClient>[
   _visionOs,
   YoutubeApiClient.ios,
@@ -53,16 +55,15 @@ final List<YoutubeApiClient> _ytClients = <YoutubeApiClient>[
   YoutubeApiClient.android,
 ];
 
-/// A song you saved: the audio/video lives on this device, so it plays offline.
 class Track {
-  final String id; // YouTube video id, also the file name
-  final String url; // original link, for "Open on YouTube"
+  final String id;
+  final String url;
   String title;
   String artist;
   String filePath;
   String? thumb;
   int durationMs;
-  bool video; // saved as MP4 instead of audio
+  bool video; // saved as MP4 instead of MP3
   DateTime added;
 
   Track({
@@ -105,9 +106,13 @@ class Track {
 /// Your personal, offline library.
 ///
 /// Music is deliberately *not* a feed. You go to YouTube, pick something and
-/// share the link into Signal (or paste it on the Music tab); the app pulls
-/// the media down to the device and plays it back here, with no network
-/// needed afterwards.
+/// share the link into Signal (or paste it on the Music tab), choose MP3 or
+/// MP4, and the app downloads and converts it on the device. No network needed
+/// afterwards.
+///
+/// Extraction avoids the watch page (which YouTube redirects to its /sorry/
+/// rate-limit wall) and uses the VISIONOS InnerTube client. Conversion/muxing
+/// is done by the bundled FFmpeg (`ffmpeg_kit_flutter_new`, GPL).
 class MusicService extends ChangeNotifier {
   final _player = AudioPlayer();
   YoutubeExplode? _yt;
@@ -205,9 +210,8 @@ class MusicService extends ChangeNotifier {
 
   /// Video metadata from YouTube's oEmbed endpoint.
   ///
-  /// This is a lightweight, stable endpoint that is *not* rate-limited the way
-  /// the watch page is, so we never have to touch `youtube.com/watch` just to
-  /// learn a title.
+  /// A lightweight, stable endpoint that is *not* rate-limited the way the
+  /// watch page is, so we never touch `youtube.com/watch` just to read a title.
   Future<Map<String, dynamic>?> _oembed(String videoUrl) async {
     try {
       final r = await http.get(Uri.parse(
@@ -220,7 +224,7 @@ class MusicService extends ChangeNotifier {
     return null;
   }
 
-  /// Download the media for a shared/pasted [url]. Returns the new track.
+  /// Download (and convert) the media for a shared/pasted [url].
   Future<Track> download(String url, {SaveFormat format = SaveFormat.audio}) async {
     final id = youtubeId(url);
     if (id == null) {
@@ -240,73 +244,82 @@ class MusicService extends ChangeNotifier {
     lastError = null;
     notifyListeners();
 
+    final yt = _youtube;
+    final watchUrl = 'https://www.youtube.com/watch?v=$id';
+    final temps = <File>[];
     File? out;
+    var durationMs = 0;
+
     try {
-      final yt = _youtube;
-      final watchUrl = 'https://www.youtube.com/watch?v=$id';
+      // Streams come from the InnerTube player API only. `requireWatchPage:
+      // false` keeps us off youtube.com/watch, which YouTube redirects to its
+      // /sorry/ rate-limit wall far more aggressively than the API.
+      final manifest = await yt.videos.streamsClient
+          .getManifest(id, ytClients: _ytClients, requireWatchPage: false);
 
-      // Streams come from the InnerTube player API only. We deliberately do NOT
-      // fetch the watch page: YouTube redirects those to /sorry/ (rate limit)
-      // far more aggressively than it does the API.
-      final manifest = await yt.videos.streamsClient.getManifest(
-        id,
-        ytClients: _ytClients,
-        requireWatchPage: false,
-      );
-
-      late StreamInfo stream;
-      late String ext;
-      late bool isVideo;
       if (format == SaveFormat.video) {
-        if (manifest.muxed.isEmpty) {
-          throw const MusicException(
-              'No video-with-sound stream was available for this one. '
-              'Try saving it as audio instead.');
+        final v = _pickVideo(manifest);
+        final a = _pickAudio(manifest);
+        if (v != null && a != null) {
+          durationMs = _estimateMs(a);
+          final vFile = File('${_dir!.path}/$id.v.${_extOf(v)}');
+          temps.add(vFile);
+          await _fetch(yt, v, vFile, 'Downloading video…');
+
+          final aFile = File('${_dir!.path}/$id.a.${_extOf(a)}');
+          temps.add(aFile);
+          await _fetch(yt, a, aFile, 'Downloading audio…');
+
+          out = File('${_dir!.path}/$id.mp4');
+          await _run(
+            '-y -i "${vFile.path}" -i "${aFile.path}" '
+            '-map 0:v:0 -map 1:a:0 -c copy -movflags +faststart "${out.path}"',
+            'Adding sound…',
+          );
+        } else if (manifest.muxed.isNotEmpty) {
+          // No separate tracks — fall back to YouTube's ready-made file.
+          final mux = manifest.muxed.sortByBitrate().first;
+          out = File('${_dir!.path}/$id.${_extOf(mux)}');
+          await _fetch(yt, mux, out, 'Downloading video…');
+          durationMs = _estimateMs(mux);
+        } else {
+          throw const MusicException('No video stream was available for this video.');
         }
-        stream = manifest.muxed.sortByBitrate().first;
-        ext = 'mp4';
-        isVideo = true;
       } else {
-        final aac =
-            manifest.audioOnly.where((s) => s.container.name == 'mp4').toList();
-        if (aac.isEmpty && manifest.audioOnly.isEmpty) {
+        final a = _pickAudio(manifest);
+        if (a == null) {
           throw const MusicException('No audio stream was available for this video.');
         }
-        stream = (aac.isNotEmpty ? aac : manifest.audioOnly).withHighestBitrate();
-        ext = stream.container.name == 'mp4' ? 'm4a' : 'webm';
-        isVideo = false;
+        durationMs = _estimateMs(a);
+
+        final src = File('${_dir!.path}/$id.src.${_extOf(a)}');
+        await _fetch(yt, a, src, 'Downloading audio…');
+
+        final mp3 = File('${_dir!.path}/$id.mp3');
+        final ok = await _run(
+          '-y -i "${src.path}" -vn -c:a libmp3lame -q:a 2 "${mp3.path}"',
+          'Converting to MP3…',
+        );
+        if (ok && mp3.existsSync() && mp3.lengthSync() > 0) {
+          out = mp3;
+          try {
+            src.deleteSync();
+          } catch (_) {}
+        } else {
+          // FFmpeg unavailable/failed: keep the original audio so it still plays.
+          final raw = File('${_dir!.path}/$id.${_extOf(a)}');
+          try {
+            src.renameSync(raw.path);
+          } catch (_) {}
+          out = raw.existsSync() ? raw : src;
+        }
       }
-      out = File('${_dir!.path}/$id.$ext');
 
       // Metadata (title, author, thumbnail) without the watch page.
       final meta = await _oembed(watchUrl);
-
-      downloadingLabel = isVideo ? 'Downloading video…' : 'Downloading audio…';
-      notifyListeners();
-
-      final total = stream.size.totalBytes;
-      var received = 0;
-      final sink = out.openWrite();
-      try {
-        await for (final chunk in yt.videos.streamsClient.get(stream)) {
-          sink.add(chunk);
-          received += chunk.length;
-          if (total > 0) {
-            downloadProgress = received / total;
-            notifyListeners();
-          }
-        }
-      } finally {
-        await sink.close();
-      }
-
       final title = (meta?['title'] ?? '').toString();
       final author = (meta?['author_name'] ?? '').toString();
       final thumb = (meta?['thumbnail_url'] ?? '').toString();
-      final bps = stream.bitrate.bitsPerSecond;
-      final estMs = bps > 0
-          ? (stream.size.totalBytes * 8 * 1000 / bps).round()
-          : 0;
 
       final t = Track(
         id: id,
@@ -315,25 +328,104 @@ class MusicService extends ChangeNotifier {
         artist: author,
         filePath: out.path,
         thumb: thumb.isNotEmpty ? thumb : 'https://i.ytimg.com/vi/$id/hqdefault.jpg',
-        durationMs: estMs,
-        video: isVideo,
+        durationMs: durationMs,
+        video: format == SaveFormat.video,
       );
       tracks.insert(0, t);
       await _persist();
       return t;
     } catch (e) {
-      try {
-        if (out != null && out.existsSync()) out.deleteSync();
-      } catch (_) {}
+      if (out != null && out.existsSync()) {
+        try {
+          out.deleteSync();
+        } catch (_) {}
+      }
       final msg = _friendly(e);
       lastError = msg;
       throw MusicException(msg);
     } finally {
+      for (final f in tempFilesForCleanup(temps, out)) {
+        try {
+          f.deleteSync();
+        } catch (_) {}
+      }
       downloading = false;
       downloadingLabel = null;
       downloadProgress = null;
       notifyListeners();
     }
+  }
+
+  /// Streams a [stream] to [dest], reporting progress.
+  Future<void> _fetch(
+      YoutubeExplode yt, StreamInfo stream, File dest, String label) async {
+    downloadingLabel = label;
+    downloadProgress = null;
+    notifyListeners();
+
+    final total = stream.size.totalBytes;
+    var received = 0;
+    final sink = dest.openWrite();
+    try {
+      await for (final chunk in yt.videos.streamsClient.get(stream)) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (total > 0) {
+          downloadProgress = received / total;
+          notifyListeners();
+        }
+      }
+    } finally {
+      await sink.close();
+    }
+  }
+
+  /// Runs one FFmpeg command. Returns whether it succeeded.
+  Future<bool> _run(String command, String label) async {
+    downloadingLabel = label;
+    downloadProgress = null;
+    notifyListeners();
+    try {
+      final session = await FFmpegKit.execute(command);
+      final rc = await session.getReturnCode();
+      final ok = ReturnCode.isSuccess(rc);
+      await FFmpegKitConfig.clearSessions();
+      return ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// The highest-resolution MP4 video-only track (H.264 copies cleanly into MP4).
+  VideoOnlyStreamInfo? _pickVideo(StreamManifest m) {
+    final mp4 = m.videoOnly.where((s) => s.container.name == 'mp4').toList();
+    if (mp4.isEmpty) return null;
+    mp4.sort((a, b) => a.videoResolution.compareTo(b.videoResolution));
+    return mp4.last;
+  }
+
+  /// The best audio-only track, preferring AAC (MP4) for compatibility.
+  AudioOnlyStreamInfo? _pickAudio(StreamManifest m) {
+    final mp4 = m.audioOnly.where((s) => s.container.name == 'mp4').toList();
+    final webm = m.audioOnly.where((s) => s.container.name == 'webm').toList();
+    final pool = mp4.isNotEmpty ? mp4 : webm;
+    if (pool.isEmpty) return null;
+    pool.sort((a, b) => a.bitrate.bitsPerSecond.compareTo(b.bitrate.bitsPerSecond));
+    return pool.last;
+  }
+
+  /// The on-disk extension for a stream's container.
+  String _extOf(StreamInfo s) {
+    final c = s.container.name;
+    if (s is AudioStreamInfo) return c == 'mp4' ? 'm4a' : 'webm';
+    return c; // 'mp4' or 'webm' for video/muxed
+  }
+
+  /// Approximate length from stream size ÷ bitrate.
+  int _estimateMs(StreamInfo s) {
+    final bps = s.bitrate.bitsPerSecond;
+    if (bps <= 0) return 0;
+    return (s.size.totalBytes * 8 * 1000 / bps).round();
   }
 
   /// Turn library/network exceptions into something worth showing a person.
@@ -381,7 +473,6 @@ class MusicService extends ChangeNotifier {
       await _player.play();
     } catch (e) {
       lastError = _friendly(e);
-      playing = false;
       notifyListeners();
     }
   }
@@ -398,18 +489,20 @@ class MusicService extends ChangeNotifier {
     }
   }
 
-  Future<void> seek(Duration d) => _player.seek(d);
+  Future<void> seek(Duration to) => _player.seek(to);
 
   Future<void> next() async {
-    if (tracks.isEmpty) return;
-    final i = currentId == null ? -1 : tracks.indexWhere((t) => t.id == currentId);
-    await play(tracks[(i + 1) % tracks.length]);
+    final list = tracks;
+    if (list.length < 2) return;
+    final i = list.indexWhere((t) => t.id == currentId);
+    await play(list[(i + 1) % list.length]);
   }
 
   Future<void> previous() async {
-    if (tracks.isEmpty) return;
-    final i = currentId == null ? 0 : tracks.indexWhere((t) => t.id == currentId);
-    await play(tracks[(i - 1 + tracks.length) % tracks.length]);
+    final list = tracks;
+    if (list.length < 2) return;
+    final i = list.indexWhere((t) => t.id == currentId);
+    await play(list[(i - 1 + list.length) % list.length]);
   }
 
   void _onComplete() {
@@ -423,3 +516,9 @@ class MusicService extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// Temp files that should be removed once a download finishes, never the file
+/// we are keeping.
+@visibleForTesting
+List<File> tempFilesForCleanup(List<File> temps, File? keep) =>
+    temps.where((f) => f.path != keep?.path).toList();

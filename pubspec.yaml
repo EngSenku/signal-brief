@@ -30,6 +30,8 @@ dependencies:
   # device, and play it back in-app.
   just_audio: ^0.10.6
   youtube_explode_dart: ^3.1.0
+  # Transcoder for real MP3 (and muxing high-quality MP4). GPL — see README.
+  ffmpeg_kit_flutter_new: ^4.6.7
 
 dev_dependencies:
   flutter_test:

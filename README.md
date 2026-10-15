@@ -56,17 +56,19 @@ intent filter are already in `android/app/src/main/AndroidManifest.xml`.
 
 ## What's in it
 
-**Brief** — ~36 ranked items drawn from **151 sources** across ten categories:
-AI, Dev, Research, News, PFE, Video, Sport, Anime, Morocco and All. Category
-chips make it easy to jump straight to your field. Tap any item to see a real
+**Brief** — up to **20 items per category** drawn from **144 sources** across
+AI, Dev, Research, News, Video, Sport, Anime and PFE, plus an All view. PFE is
+uncapped: it pulls every listing it can find. Category chips make it easy to
+jump straight to your field. Tap any item to see a real
 "What it's about" preview (the article's opening paragraphs, or the video's
 description with a thumbnail) before you decide to open it. Ends with a
 "You're caught up" card — no infinite scroll.
 
-- **PFE & internships** — a dedicated category that sweeps Moroccan job boards
-  (PFE Daba, Rekrute, Emploi.ma, Maroc Emploi, Dreamjob, Indeed, LinkedIn) plus
-  international software / ML / data internships and relevant Reddit threads,
-  all through Google News so it stays plain RSS.
+- **PFE & internships** — the last chip in the bar, and the only uncapped one:
+  it sweeps Moroccan job boards (PFE Daba, Rekrute, Emploi.ma, Maroc Emploi,
+  Dreamjob, Indeed, LinkedIn) plus international software / ML / data
+  internships and relevant Reddit threads, all through Google News so it stays
+  plain RSS.
 - **Video** — the one category that ignores freshness. Each channel's recent
   uploads are ranked by view count, so a genuinely popular older video can beat
   a dull new one. View counts are shown on the card and in the sheet.
@@ -78,12 +80,14 @@ the flashcard action). Save any of them to your reading list.
 
 **Music** — a personal, *offline* library, and deliberately **not** a feed.
 Find a song or video on YouTube (or YouTube Music), tap **Share** and pick
-Signal — or paste the link on the Music tab — then choose **Audio** or **Video**.
+Signal — or paste the link on the Music tab — then choose **MP3** (audio) or
+**MP4** (video).
 Signal downloads it to the device and plays it back in-app with a full player
 (seek, next/previous, playlist), no connection needed afterwards. Delete an
-item to reclaim the space. Audio is stored as AAC/M4A and video as MP4; YouTube
-serves neither MP3 nor high-resolution muxed video, so those formats would need
-a bundled transcoder (see the note on music below).
+item to reclaim the space. You choose the format: **MP3** (audio, transcoded to
+a real `.mp3` with a bundled ffmpeg) or **MP4** (up to 1080p — best video-only
+stream muxed with best audio). Downloads fall back to the raw stream if the
+conversion fails (see the note on music below).
 
 **Study**
 - **Flashcards** generated from any item with AI, reviewed with a simplified
@@ -98,8 +102,8 @@ reading (the article body is extracted and cached on device).
 papers explained, a 7-day bar chart and an optional AI summary of your week.
 
 **Share into Signal** — share a link from any app and it lands in your reading
-list. Share a YouTube link and Signal offers to download the audio into your
-offline Music library instead.
+list. Share a YouTube link and Signal offers to download it into your offline
+Music library as MP3 or MP4 instead.
 
 **Time limit** — a daily budget with a lock screen and a "5 more minutes"
 button.
@@ -121,7 +125,7 @@ lib/
   services/
     notifications.dart      one daily reminder
     sharing.dart            receive links shared from other apps
-    music.dart              offline library: YouTube → local audio + playback
+    music.dart              offline library: YouTube → local MP3/MP4 + playback
 ```
 
 Share-to-app on Android is implemented in-house: the `SEND` intent filter is in
@@ -157,9 +161,13 @@ smoke tests for every tab.
   page far more readily. Metadata comes from the oEmbed endpoint. Even so,
   downloading from YouTube is against YouTube's Terms of Service, the extractor
   depends on YouTube's internals, and a busy IP can still be rate-limited; use
-  it for personal listening and think twice before shipping it publicly. If you
-  want true MP3 files or high-resolution MP4, add a transcoder such as
-  `ffmpeg_kit_flutter_new` (note it is GPL and adds a lot of APK size).
+  it for personal listening and think twice before shipping it publicly.
+- **MP3 / MP4 and the license split.** True MP3 and up to 1080p MP4 are produced
+  by bundling `ffmpeg_kit_flutter_new` (full, GPL). The app source in this repo
+  is MIT, but the **shipped binaries bundle GPL ffmpeg** — which adds a lot of
+  APK size and means a distributed APK carries GPL obligations while the source
+  stays MIT. If you would rather ship a pure-MIT binary, drop that dependency;
+  downloads then fall back to the raw AAC/M4A audio and ready-made MP4 video.
 
 ## License
 

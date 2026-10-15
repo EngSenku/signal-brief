@@ -16,7 +16,7 @@ const kUserAgent =
 /// The active sources behind the daily brief. Chosen to be clear, useful and
 /// easy to read: plain-language titles, real knowledge — no jargon you'd need
 /// a PhD to enjoy. Built for a working AI / ML / software engineer who also
-/// likes sport, anime and following what's happening at home in Morocco.
+/// likes sport and anime.
 const kSources = <Source>[
   // ---------------------------------------------------------------- AI / ML
   // Easy-to-read AI news first, then practical learning material.
@@ -361,32 +361,6 @@ const kSources = <Source>[
       cap: 1, ageH: 168),
   Source('r/anime', 'https://www.reddit.com/r/anime/top/.rss?t=day', 'Anime',
       cap: 1, ageH: 48),
-
-  // -------------------------------------------------- Morocco / PFE / jobs
-  Source('Morocco — PFE',
-      'https://news.google.com/rss/search?q=PFE+Maroc&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 3, ageH: 168, weight: 2,
-      about: 'Final-year project (PFE) news in Morocco.'),
-  Source('Morocco — stages & PFE',
-      'https://news.google.com/rss/search?q=stage+PFE+informatique&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 3, ageH: 168, weight: 2,
-      about: 'Internships and PFE placements.'),
-  Source('Morocco — stage data & IA',
-      'https://news.google.com/rss/search?q=stage+data+science+OR+%22intelligence+artificielle%22+Maroc&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 168, weight: 2,
-      about: 'Data / AI internships in Morocco.'),
-  Source('Morocco — emplois IT',
-      'https://news.google.com/rss/search?q=Maroc+emploi+informatique&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 168, about: 'IT jobs in Morocco.'),
-  Source('Morocco — hackathons & bourses',
-      'https://news.google.com/rss/search?q=hackathon+Maroc+OR+bourse+%C3%A9tudiants+Maroc&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 240, about: 'Hackathons and scholarships.'),
-  Source('Morocco — startups & tech',
-      'https://news.google.com/rss/search?q=Morocco+startup+OR+technology&hl=en-US&gl=US&ceid=US:en',
-      'Morocco', cap: 2, ageH: 168),
-  Source('Morocco — IA',
-      'https://news.google.com/rss/search?q=Maroc+intelligence+artificielle&hl=fr&gl=MA&ceid=MA:fr',
-      'Morocco', cap: 2, ageH: 168, about: 'AI news from Morocco.'),
 
   // ---------------------------------------------------- PFE / internships
   // A daily sweep of final-year-project ("PFE") and internship openings:
